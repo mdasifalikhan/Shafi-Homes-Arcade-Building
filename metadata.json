@@ -1,0 +1,6 @@
+{
+  "name": "Shafi Homes Arcade",
+  "description": "Building society app for resident maintenance collection, repair work data logging, and automated scheduling for maintenance contractors.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

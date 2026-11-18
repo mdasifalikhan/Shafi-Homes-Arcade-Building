@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">Shafi Homes Arcade</string>
+    <string name="tagline_society">Building Society Operations</string>
+    <string name="nav_maintenance_requests">Maintenance Requests</string>
+    <string name="nav_payment_collection">Payment Collection</string>
+    <string name="nav_contractor_dashboard">Contractor Dashboard</string>
+    <string name="title_new_maintenance_request">New Maintenance Request</string>
+    <string name="action_run_auto_scheduler">Run Auto-Scheduler</string>
+    <string name="action_add_due">New Bill</string>
+    <string name="action_log_repair">Log Repair</string>
+    <string name="action_add_contractor">Add Contractor</string>
+    <string name="cd_society_hero">Residential building society courtyard banner</string>
+    <string name="cd_empty_illustration">Maintenance clipboard and tools illustration</string>
+    <string name="cd_profile_settings">Society profile and settings</string>
+</resources>

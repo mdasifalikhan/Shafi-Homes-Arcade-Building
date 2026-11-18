@@ -1,0 +1,267 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated resident or society coordinator profile with isolated PII.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the account owner."
+        },
+        "societyName": {
+          "type": "string",
+          "description": "Building society name."
+        },
+        "residentName": {
+          "type": "string",
+          "description": "Resident or coordinator display name."
+        },
+        "unitLabel": {
+          "type": "string",
+          "description": "Wing and apartment number."
+        },
+        "defaultMonthlyFee": {
+          "type": "number",
+          "description": "Standard monthly maintenance assessment."
+        },
+        "activeRole": {
+          "type": "string",
+          "enum": ["RESIDENT", "MANAGER", "CONTRACTOR"],
+          "description": "Active workspace perspective."
+        },
+        "email": {
+          "type": "string",
+          "description": "Owner email address (isolated PII)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp on creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp on last update."
+        }
+      },
+      "required": [
+        "userId",
+        "societyName",
+        "residentName",
+        "unitLabel",
+        "defaultMonthlyFee",
+        "activeRole",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "MaintenanceDue": {
+      "title": "MaintenanceDue",
+      "description": "Resident maintenance fee assessment and collection record.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "unitNumber": { "type": "string" },
+        "residentName": { "type": "string" },
+        "billingPeriod": { "type": "string" },
+        "baseAmount": { "type": "number" },
+        "sinkingFund": { "type": "number" },
+        "utilityAmount": { "type": "number" },
+        "lateFee": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "status": {
+          "type": "string",
+          "enum": ["PENDING", "PAID", "OVERDUE"]
+        },
+        "paymentMethod": {
+          "type": "string",
+          "enum": ["UPI", "BANK_TRANSFER", "CARD", "CASH"]
+        },
+        "receiptNumber": { "type": "string" },
+        "notes": { "type": "string" },
+        "dueDateEpochDay": { "type": "integer" },
+        "paidAtEpochMillis": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "unitNumber",
+        "residentName",
+        "billingPeriod",
+        "baseAmount",
+        "sinkingFund",
+        "utilityAmount",
+        "lateFee",
+        "totalAmount",
+        "status",
+        "dueDateEpochDay",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Contractor": {
+      "title": "Contractor",
+      "description": "Maintenance contractor profile, specialty, shift hours, and daily capacity.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "company": { "type": "string" },
+        "specialty": {
+          "type": "string",
+          "enum": ["PLUMBING", "ELECTRICAL", "ELEVATOR", "HVAC", "CIVIL", "SECURITY"]
+        },
+        "phoneSuffix": { "type": "string" },
+        "shiftStartHour": { "type": "integer" },
+        "shiftEndHour": { "type": "integer" },
+        "dailyCapacity": { "type": "integer" },
+        "hourlyRate": { "type": "number" },
+        "available": { "type": "boolean" },
+        "completedJobs": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "name",
+        "company",
+        "specialty",
+        "shiftStartHour",
+        "shiftEndHour",
+        "dailyCapacity",
+        "hourlyRate",
+        "available",
+        "completedJobs",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "RepairTicket": {
+      "title": "RepairTicket",
+      "description": "Resident repair work log with cost tracking, photo reference, and scheduling metadata.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "unitLocation": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": {
+          "type": "string",
+          "enum": ["PLUMBING", "ELECTRICAL", "ELEVATOR", "HVAC", "CIVIL", "SECURITY"]
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["LOW", "MEDIUM", "HIGH", "EMERGENCY"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["LOGGED", "SCHEDULED", "IN_PROGRESS", "COMPLETED", "CANCELLED"]
+        },
+        "estimatedCost": { "type": "number" },
+        "actualCost": { "type": "number" },
+        "workNotes": { "type": "string" },
+        "photoLabel": { "type": "string" },
+        "photoUri": { "type": "string" },
+        "assignedContractorId": { "type": "string" },
+        "assignedContractorName": { "type": "string" },
+        "scheduledDateEpochDay": { "type": "integer" },
+        "scheduledSlot": {
+          "type": "string",
+          "enum": ["MORNING_09_12", "AFTERNOON_13_16", "EVENING_17_20", "EMERGENCY_NOW"]
+        },
+        "autoScheduled": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "unitLocation",
+        "title",
+        "description",
+        "category",
+        "priority",
+        "status",
+        "estimatedCost",
+        "actualCost",
+        "autoScheduled",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ScheduleEntry": {
+      "title": "ScheduleEntry",
+      "description": "Automated contractor dispatch assignment linked to a repair ticket and contractor.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "ticketId": { "type": "string" },
+        "ticketTitle": { "type": "string" },
+        "unitLocation": { "type": "string" },
+        "contractorId": { "type": "string" },
+        "contractorName": { "type": "string" },
+        "specialty": {
+          "type": "string",
+          "enum": ["PLUMBING", "ELECTRICAL", "ELEVATOR", "HVAC", "CIVIL", "SECURITY"]
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["LOW", "MEDIUM", "HIGH", "EMERGENCY"]
+        },
+        "scheduledDateEpochDay": { "type": "integer" },
+        "timeSlot": {
+          "type": "string",
+          "enum": ["MORNING_09_12", "AFTERNOON_13_16", "EVENING_17_20", "EMERGENCY_NOW"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["SCHEDULED", "EN_ROUTE", "IN_WORK", "DONE", "CANCELLED"]
+        },
+        "autoScheduled": { "type": "boolean" },
+        "matchReason": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "ticketId",
+        "ticketTitle",
+        "unitLocation",
+        "contractorId",
+        "contractorName",
+        "specialty",
+        "priority",
+        "scheduledDateEpochDay",
+        "timeSlot",
+        "status",
+        "autoScheduled",
+        "matchReason",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Owner-isolated user society profile."
+    },
+    "/users/{userId}/maintenance_dues/{dueId}": {
+      "schema": { "$ref": "#/entities/MaintenanceDue" },
+      "description": "Maintenance fee assessments and payment collection records."
+    },
+    "/users/{userId}/contractors/{contractorId}": {
+      "schema": { "$ref": "#/entities/Contractor" },
+      "description": "Registered building society maintenance contractors."
+    },
+    "/users/{userId}/repair_tickets/{ticketId}": {
+      "schema": { "$ref": "#/entities/RepairTicket" },
+      "description": "Resident repair work logs and status tracking."
+    },
+    "/users/{userId}/schedule_entries/{entryId}": {
+      "schema": { "$ref": "#/entities/ScheduleEntry" },
+      "description": "Automated contractor schedule slots linked to repair tickets."
+    }
+  }
+}

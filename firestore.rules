@@ -1,0 +1,317 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Global Helpers ---
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        ('email' in request.auth.token &&
+         request.auth.token.email == 'shafihomesarcade@gmail.com' &&
+         request.auth.token.email_verified == true)
+      );
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is timestamp && ts <= request.time;
+    }
+
+    function isValidTrade(val) {
+      return val is string && val in ['PLUMBING', 'ELECTRICAL', 'ELEVATOR', 'HVAC', 'CIVIL', 'SECURITY'];
+    }
+
+    function isValidPriority(val) {
+      return val is string && val in ['LOW', 'MEDIUM', 'HIGH', 'EMERGENCY'];
+    }
+
+    function isValidSlot(val) {
+      return val is string && val in ['MORNING_09_12', 'AFTERNOON_13_16', 'EVENING_17_20', 'EMERGENCY_NOW'];
+    }
+
+    // --- Validation Helpers ---
+    function isValidUserProfile(data) {
+      return data.userId is string && isValidId(data.userId) &&
+             data.societyName is string && data.societyName.size() >= 2 && data.societyName.size() <= 80 &&
+             data.residentName is string && data.residentName.size() >= 2 && data.residentName.size() <= 60 &&
+             data.unitLabel is string && data.unitLabel.size() >= 1 && data.unitLabel.size() <= 24 &&
+             data.defaultMonthlyFee is number && data.defaultMonthlyFee >= 0 && data.defaultMonthlyFee <= 1000000 &&
+             data.activeRole is string && data.activeRole in ['RESIDENT', 'MANAGER', 'CONTRACTOR'] &&
+             (!('email' in data) || data.email == null || (data.email is string && data.email.size() <= 120));
+    }
+
+    function isValidMaintenanceDue(data) {
+      return data.userId is string && isValidId(data.userId) &&
+             data.unitNumber is string && data.unitNumber.size() >= 1 && data.unitNumber.size() <= 24 &&
+             data.residentName is string && data.residentName.size() >= 2 && data.residentName.size() <= 60 &&
+             data.billingPeriod is string && data.billingPeriod.size() >= 3 && data.billingPeriod.size() <= 32 &&
+             data.baseAmount is number && data.baseAmount >= 0 && data.baseAmount <= 1000000 &&
+             data.sinkingFund is number && data.sinkingFund >= 0 && data.sinkingFund <= 1000000 &&
+             data.utilityAmount is number && data.utilityAmount >= 0 && data.utilityAmount <= 1000000 &&
+             data.lateFee is number && data.lateFee >= 0 && data.lateFee <= 1000000 &&
+             data.totalAmount is number && data.totalAmount >= 0 && data.totalAmount <= 4000000 &&
+             data.status is string && data.status in ['PENDING', 'PAID', 'OVERDUE'] &&
+             data.dueDateEpochDay is int && data.dueDateEpochDay >= 0 &&
+             (!('paymentMethod' in data) || data.paymentMethod == null || (data.paymentMethod is string && data.paymentMethod in ['UPI', 'BANK_TRANSFER', 'CARD', 'CASH'])) &&
+             (!('receiptNumber' in data) || data.receiptNumber == null || (data.receiptNumber is string && data.receiptNumber.size() <= 40)) &&
+             (!('notes' in data) || data.notes == null || (data.notes is string && data.notes.size() <= 300)) &&
+             (!('paidAtEpochMillis' in data) || data.paidAtEpochMillis == null || (data.paidAtEpochMillis is int && data.paidAtEpochMillis >= 0));
+    }
+
+    function isValidContractor(data) {
+      return data.userId is string && isValidId(data.userId) &&
+             data.name is string && data.name.size() >= 2 && data.name.size() <= 60 &&
+             data.company is string && data.company.size() >= 2 && data.company.size() <= 60 &&
+             isValidTrade(data.specialty) &&
+             data.shiftStartHour is int && data.shiftStartHour >= 0 && data.shiftStartHour <= 23 &&
+             data.shiftEndHour is int && data.shiftEndHour > data.shiftStartHour && data.shiftEndHour <= 24 &&
+             data.dailyCapacity is int && data.dailyCapacity >= 1 && data.dailyCapacity <= 12 &&
+             data.hourlyRate is number && data.hourlyRate >= 0 && data.hourlyRate <= 50000 &&
+             data.available is bool &&
+             data.completedJobs is int && data.completedJobs >= 0 &&
+             (!('phoneSuffix' in data) || data.phoneSuffix == null || (data.phoneSuffix is string && data.phoneSuffix.size() <= 16));
+    }
+
+    function isValidRepairTicket(data) {
+      return data.userId is string && isValidId(data.userId) &&
+             data.unitLocation is string && data.unitLocation.size() >= 1 && data.unitLocation.size() <= 40 &&
+             data.title is string && data.title.size() >= 3 && data.title.size() <= 80 &&
+             data.description is string && data.description.size() >= 5 && data.description.size() <= 500 &&
+             isValidTrade(data.category) &&
+             isValidPriority(data.priority) &&
+             data.status is string && data.status in ['LOGGED', 'SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'] &&
+             data.estimatedCost is number && data.estimatedCost >= 0 && data.estimatedCost <= 1000000 &&
+             data.actualCost is number && data.actualCost >= 0 && data.actualCost <= 1000000 &&
+             data.autoScheduled is bool &&
+             (!('workNotes' in data) || data.workNotes == null || (data.workNotes is string && data.workNotes.size() <= 500)) &&
+             (!('photoLabel' in data) || data.photoLabel == null || (data.photoLabel is string && data.photoLabel.size() <= 120)) &&
+             (!('photoUri' in data) || data.photoUri == null || (data.photoUri is string && data.photoUri.size() <= 400)) &&
+             (!('assignedContractorId' in data) || data.assignedContractorId == null || isValidId(data.assignedContractorId)) &&
+             (!('assignedContractorName' in data) || data.assignedContractorName == null || (data.assignedContractorName is string && data.assignedContractorName.size() <= 60)) &&
+             (!('scheduledDateEpochDay' in data) || data.scheduledDateEpochDay == null || (data.scheduledDateEpochDay is int && data.scheduledDateEpochDay >= 0)) &&
+             (!('scheduledSlot' in data) || data.scheduledSlot == null || isValidSlot(data.scheduledSlot));
+    }
+
+    function isValidScheduleEntry(data) {
+      return data.userId is string && isValidId(data.userId) &&
+             isValidId(data.ticketId) &&
+             data.ticketTitle is string && data.ticketTitle.size() >= 3 && data.ticketTitle.size() <= 80 &&
+             data.unitLocation is string && data.unitLocation.size() >= 1 && data.unitLocation.size() <= 40 &&
+             isValidId(data.contractorId) &&
+             data.contractorName is string && data.contractorName.size() >= 2 && data.contractorName.size() <= 60 &&
+             isValidTrade(data.specialty) &&
+             isValidPriority(data.priority) &&
+             data.scheduledDateEpochDay is int && data.scheduledDateEpochDay >= 0 &&
+             isValidSlot(data.timeSlot) &&
+             data.status is string && data.status in ['SCHEDULED', 'EN_ROUTE', 'IN_WORK', 'DONE', 'CANCELLED'] &&
+             data.autoScheduled is bool &&
+             data.matchReason is string && data.matchReason.size() >= 2 && data.matchReason.size() <= 160;
+    }
+
+    // --- Collection Rules ---
+    match /admins/{adminId} {
+      allow get: if isSignedIn() && request.auth.uid == adminId;
+      allow list, write: if false;
+    }
+
+    match /users/{userId} {
+      allow get: if (isOwner(userId) || isAdmin()) && isValidId(userId);
+      allow list: if isAdmin();
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['userId', 'societyName', 'residentName', 'unitLabel', 'defaultMonthlyFee', 'activeRole', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'societyName', 'residentName', 'unitLabel', 'defaultMonthlyFee', 'activeRole', 'email', 'createdAt', 'updatedAt']) &&
+                       isValidTimestamp(incoming().createdAt) &&
+                       isValidTimestamp(incoming().updatedAt) &&
+                       isValidUserProfile(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(userId) &&
+                       isValidUserProfile(incoming()) && (
+                         isAdmin() || (
+                           isOwner(userId) &&
+                           incoming().userId == existing().userId &&
+                           incoming().createdAt == existing().createdAt &&
+                           isValidTimestamp(incoming().updatedAt) &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['societyName', 'residentName', 'unitLabel', 'defaultMonthlyFee', 'activeRole', 'email', 'updatedAt'])
+                         )
+                       );
+
+      allow delete: if (isOwner(userId) || isAdmin()) && isValidId(userId);
+
+      // Subcollection: Maintenance Dues
+      match /maintenance_dues/{dueId} {
+        allow get: if (isOwner(userId) || isAdmin()) && isValidId(dueId);
+        allow list: if isOwner(userId) || isAdmin();
+
+        allow create: if isOwner(userId) &&
+                         isValidId(dueId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'unitNumber', 'residentName', 'billingPeriod', 'baseAmount', 'sinkingFund', 'utilityAmount', 'lateFee', 'totalAmount', 'status', 'dueDateEpochDay', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'unitNumber', 'residentName', 'billingPeriod', 'baseAmount', 'sinkingFund', 'utilityAmount', 'lateFee', 'totalAmount', 'status', 'paymentMethod', 'receiptNumber', 'notes', 'dueDateEpochDay', 'paidAtEpochMillis', 'createdAt', 'updatedAt']) &&
+                         isValidTimestamp(incoming().createdAt) &&
+                         isValidTimestamp(incoming().updatedAt) &&
+                         isValidMaintenanceDue(incoming());
+
+        allow update: if isSignedIn() &&
+                         isValidId(dueId) &&
+                         isValidMaintenanceDue(incoming()) && (
+                           isAdmin() || (
+                             isOwner(userId) &&
+                             incoming().userId == existing().userId &&
+                             incoming().createdAt == existing().createdAt &&
+                             isValidTimestamp(incoming().updatedAt) &&
+                             existing().status != 'PAID' && (
+                               // Action: Record payment (terminal state transition)
+                               (incoming().status == 'PAID' &&
+                                incoming().diff(existing()).affectedKeys().hasOnly(['status', 'paymentMethod', 'receiptNumber', 'paidAtEpochMillis', 'notes', 'lateFee', 'totalAmount', 'updatedAt'])) ||
+                               // Action: Update pending/overdue billing adjustments
+                               (incoming().status in ['PENDING', 'OVERDUE'] &&
+                                incoming().diff(existing()).affectedKeys().hasOnly(['status', 'lateFee', 'totalAmount', 'notes', 'dueDateEpochDay', 'updatedAt']))
+                             )
+                           )
+                         );
+
+        allow delete: if (isOwner(userId) || isAdmin()) && isValidId(dueId);
+      }
+
+      // Subcollection: Maintenance Contractors
+      match /contractors/{contractorId} {
+        allow get: if (isOwner(userId) || isAdmin()) && isValidId(contractorId);
+        allow list: if isOwner(userId) || isAdmin();
+
+        allow create: if isOwner(userId) &&
+                         isValidId(contractorId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'name', 'company', 'specialty', 'shiftStartHour', 'shiftEndHour', 'dailyCapacity', 'hourlyRate', 'available', 'completedJobs', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'name', 'company', 'specialty', 'phoneSuffix', 'shiftStartHour', 'shiftEndHour', 'dailyCapacity', 'hourlyRate', 'available', 'completedJobs', 'createdAt', 'updatedAt']) &&
+                         isValidTimestamp(incoming().createdAt) &&
+                         isValidTimestamp(incoming().updatedAt) &&
+                         isValidContractor(incoming());
+
+        allow update: if isSignedIn() &&
+                         isValidId(contractorId) &&
+                         isValidContractor(incoming()) && (
+                           isAdmin() || (
+                             isOwner(userId) &&
+                             incoming().userId == existing().userId &&
+                             incoming().createdAt == existing().createdAt &&
+                             isValidTimestamp(incoming().updatedAt) && (
+                               // Action: Toggle availability
+                               incoming().diff(existing()).affectedKeys().hasOnly(['available', 'updatedAt']) ||
+                               // Action: Increment completed jobs counter
+                               incoming().diff(existing()).affectedKeys().hasOnly(['completedJobs', 'updatedAt']) ||
+                               // Action: Edit contractor profile
+                               incoming().diff(existing()).affectedKeys().hasOnly(['name', 'company', 'specialty', 'phoneSuffix', 'shiftStartHour', 'shiftEndHour', 'dailyCapacity', 'hourlyRate', 'available', 'updatedAt'])
+                             )
+                           )
+                         );
+
+        allow delete: if (isOwner(userId) || isAdmin()) && isValidId(contractorId);
+      }
+
+      // Subcollection: Repair Tickets
+      match /repair_tickets/{ticketId} {
+        allow get: if (isOwner(userId) || isAdmin()) && isValidId(ticketId);
+        allow list: if isOwner(userId) || isAdmin();
+
+        allow create: if isOwner(userId) &&
+                         isValidId(ticketId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'unitLocation', 'title', 'description', 'category', 'priority', 'status', 'estimatedCost', 'actualCost', 'autoScheduled', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'unitLocation', 'title', 'description', 'category', 'priority', 'status', 'estimatedCost', 'actualCost', 'workNotes', 'photoLabel', 'photoUri', 'assignedContractorId', 'assignedContractorName', 'scheduledDateEpochDay', 'scheduledSlot', 'autoScheduled', 'createdAt', 'updatedAt']) &&
+                         isValidTimestamp(incoming().createdAt) &&
+                         isValidTimestamp(incoming().updatedAt) &&
+                         isValidRepairTicket(incoming());
+
+        allow update: if isSignedIn() &&
+                         isValidId(ticketId) &&
+                         isValidRepairTicket(incoming()) && (
+                           isAdmin() || (
+                             isOwner(userId) &&
+                             incoming().userId == existing().userId &&
+                             incoming().createdAt == existing().createdAt &&
+                             isValidTimestamp(incoming().updatedAt) &&
+                             !(existing().status in ['COMPLETED', 'CANCELLED']) && (
+                               // Action: Automated or manual contractor schedule assignment
+                               (incoming().status == 'SCHEDULED' &&
+                                incoming().diff(existing()).affectedKeys().hasOnly(['status', 'assignedContractorId', 'assignedContractorName', 'scheduledDateEpochDay', 'scheduledSlot', 'autoScheduled', 'updatedAt'])) ||
+                               // Action: Progress work log or complete/cancel ticket
+                               (incoming().status in ['IN_PROGRESS', 'COMPLETED', 'CANCELLED'] &&
+                                incoming().diff(existing()).affectedKeys().hasOnly(['status', 'actualCost', 'workNotes', 'updatedAt'])) ||
+                               // Action: Edit ticket details prior to completion
+                               incoming().diff(existing()).affectedKeys().hasOnly(['unitLocation', 'title', 'description', 'category', 'priority', 'estimatedCost', 'workNotes', 'photoLabel', 'photoUri', 'updatedAt'])
+                             )
+                           )
+                         );
+
+        allow delete: if (isOwner(userId) || isAdmin()) && isValidId(ticketId);
+      }
+
+      // Subcollection: Automated Schedule Entries
+      match /schedule_entries/{entryId} {
+        allow get: if (isOwner(userId) || isAdmin()) && isValidId(entryId);
+        allow list: if isOwner(userId) || isAdmin();
+
+        allow create: if isOwner(userId) &&
+                         isValidId(entryId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'ticketId', 'ticketTitle', 'unitLocation', 'contractorId', 'contractorName', 'specialty', 'priority', 'scheduledDateEpochDay', 'timeSlot', 'status', 'autoScheduled', 'matchReason', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'ticketId', 'ticketTitle', 'unitLocation', 'contractorId', 'contractorName', 'specialty', 'priority', 'scheduledDateEpochDay', 'timeSlot', 'status', 'autoScheduled', 'matchReason', 'createdAt', 'updatedAt']) &&
+                         isValidTimestamp(incoming().createdAt) &&
+                         isValidTimestamp(incoming().updatedAt) &&
+                         isValidScheduleEntry(incoming()) &&
+                         existsAfter(/databases/$(database)/documents/users/$(userId)/repair_tickets/$(incoming().ticketId)) &&
+                         existsAfter(/databases/$(database)/documents/users/$(userId)/contractors/$(incoming().contractorId));
+
+        allow update: if isSignedIn() &&
+                         isValidId(entryId) &&
+                         isValidScheduleEntry(incoming()) && (
+                           isAdmin() || (
+                             isOwner(userId) &&
+                             incoming().userId == existing().userId &&
+                             incoming().ticketId == existing().ticketId &&
+                             incoming().contractorId == existing().contractorId &&
+                             incoming().createdAt == existing().createdAt &&
+                             isValidTimestamp(incoming().updatedAt) &&
+                             !(existing().status in ['DONE', 'CANCELLED']) && (
+                               // Action: Update dispatch execution status
+                               incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) ||
+                               // Action: Reschedule slot
+                               incoming().diff(existing()).affectedKeys().hasOnly(['scheduledDateEpochDay', 'timeSlot', 'matchReason', 'updatedAt'])
+                             )
+                           )
+                         );
+
+        allow delete: if (isOwner(userId) || isAdmin()) && isValidId(entryId);
+      }
+    }
+  }
+}

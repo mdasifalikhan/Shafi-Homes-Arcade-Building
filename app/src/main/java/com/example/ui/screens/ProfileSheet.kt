@@ -1,0 +1,152 @@
+package com.example.ui.screens
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
+import com.example.data.model.SocietyRole
+import com.example.data.model.UserProfile
+import com.example.ui.theme.StatusOverdueRed
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProfileSheet(
+    profile: UserProfile?,
+    onDismiss: () -> Unit,
+    onSaveProfile: (
+        societyName: String,
+        residentName: String,
+        unitLabel: String,
+        defaultMonthlyFee: Double,
+        activeRole: SocietyRole
+    ) -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var societyName by remember(profile) { mutableStateOf(profile?.societyName ?: "Shafi Homes Arcade") }
+    var residentName by remember(profile) { mutableStateOf(profile?.residentName ?: "Society Member") }
+    var unitLabel by remember(profile) { mutableStateOf(profile?.unitLabel ?: "Tower A - 101") }
+    var monthlyFee by remember(profile) { mutableStateOf((profile?.defaultMonthlyFee ?: 3500.0).toInt().toString()) }
+    var activeRole by remember(profile) { mutableStateOf(profile?.roleEnum ?: SocietyRole.RESIDENT) }
+    var errorText by remember { mutableStateOf<String?>(null) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text("Society Profile & Settings", style = MaterialTheme.typography.headlineSmall)
+            Text(
+                text = "Configure your building society defaults and active workspace view.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            OutlinedTextField(
+                value = societyName,
+                onValueChange = { societyName = it },
+                label = { Text("Building Society Name") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = residentName,
+                onValueChange = { residentName = it },
+                label = { Text("Your Name") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = unitLabel,
+                    onValueChange = { unitLabel = it },
+                    label = { Text("Default Unit") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedTextField(
+                    value = monthlyFee,
+                    onValueChange = { monthlyFee = it },
+                    label = { Text("Default Fee") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Text("Workspace Perspective", style = MaterialTheme.typography.labelLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SocietyRole.entries.forEach { role ->
+                    FilterChip(
+                        selected = activeRole == role,
+                        onClick = { activeRole = role },
+                        label = { Text(role.label) }
+                    )
+                }
+            }
+
+            if (errorText != null) {
+                Text(
+                    text = errorText ?: "",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = StatusOverdueRed
+                )
+            }
+
+            Button(
+                onClick = {
+                    val fee = monthlyFee.toDoubleOrNull()
+                    when {
+                        societyName.trim().length < 2 -> errorText = "Society name must be at least 2 characters."
+                        residentName.trim().length < 2 -> errorText = "Name must be at least 2 characters."
+                        unitLabel.trim().isEmpty() -> errorText = "Unit label is required."
+                        fee == null || fee < 0.0 -> errorText = "Enter a valid monthly fee."
+                        else -> onSaveProfile(
+                            societyName.trim(),
+                            residentName.trim(),
+                            unitLabel.trim(),
+                            fee,
+                            activeRole
+                        )
+                    }
+                },
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp)
+                    .testTag("save_profile_button")
+            ) {
+                Text("Save Society Settings")
+            }
+        }
+    }
+}
