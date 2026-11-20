@@ -4,6 +4,8 @@ import android.content.Context
 import com.example.data.model.Contractor
 import com.example.data.model.DueStatus
 import com.example.data.model.MaintenanceDue
+import com.example.data.model.Notice
+import com.example.data.model.NoticeCategory
 import com.example.data.model.PaymentMethod
 import com.example.data.model.RepairTicket
 import com.example.data.model.ScheduleEntry
@@ -14,6 +16,9 @@ import com.example.data.model.TicketPriority
 import com.example.data.model.TicketStatus
 import com.example.data.model.TradeCategory
 import com.example.data.model.UserProfile
+import com.example.data.model.VisitorPass
+import com.example.data.model.VisitorPurpose
+import com.example.data.model.VisitorStatus
 import com.example.data.scheduling.ScheduleProposal
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
@@ -38,6 +43,12 @@ class SocietyRepository(private val dao: SocietyDao) {
 
     fun observeScheduleEntries(): Flow<List<ScheduleEntry>> =
         dao.observeScheduleEntries().map { list -> list.map { it.toDomain() } }
+
+    fun observeNotices(): Flow<List<Notice>> =
+        dao.observeNotices().map { list -> list.map { it.toDomain() } }
+
+    fun observeVisitorPasses(): Flow<List<VisitorPass>> =
+        dao.observeVisitorPasses().map { list -> list.map { it.toDomain() } }
 
     suspend fun saveUserProfile(
         societyName: String,
@@ -394,6 +405,129 @@ class SocietyRepository(private val dao: SocietyDao) {
             matchReason = "Rescheduled to ${newSlot.windowText}".take(155),
             nowMillis = System.currentTimeMillis()
         )
+    }
+
+    suspend fun createNotice(
+        title: String,
+        content: String,
+        category: NoticeCategory,
+        author: String = "Managing Committee",
+        isPinned: Boolean = false
+    ): Result<Unit> = runSafe {
+        val cleanTitle = title.trim().take(120)
+        val cleanContent = content.trim().take(2000)
+        val cleanAuthor = author.trim().take(60).ifEmpty { "Managing Committee" }
+        require(cleanTitle.length >= 3) { "Title must be at least 3 characters." }
+        require(cleanContent.length >= 5) { "Notice content must be at least 5 characters." }
+        dao.upsertNotice(
+            NoticeEntity(
+                id = UUID.randomUUID().toString(),
+                title = cleanTitle,
+                content = cleanContent,
+                category = category.name,
+                author = cleanAuthor,
+                isPinned = isPinned,
+                createdAtMillis = System.currentTimeMillis()
+            )
+        )
+    }
+
+    suspend fun deleteNotice(id: String): Result<Unit> = runSafe {
+        dao.deleteNotice(id)
+    }
+
+    suspend fun createVisitorPass(
+        visitorName: String,
+        phone: String?,
+        purpose: VisitorPurpose,
+        unitNumber: String,
+        vehicleNumber: String? = null
+    ): Result<VisitorPass> = runSafeValue {
+        val cleanName = visitorName.trim().take(60)
+        val cleanUnit = unitNumber.trim().take(24)
+        require(cleanName.length >= 2) { "Visitor name must be at least 2 characters." }
+        require(cleanUnit.isNotEmpty()) { "Unit number is required." }
+        val randomPasscode = (1000..9999).random().toString()
+        val now = System.currentTimeMillis()
+        val entity = VisitorPassEntity(
+            id = UUID.randomUUID().toString(),
+            visitorName = cleanName,
+            phone = phone?.trim()?.take(20)?.takeIf { it.isNotEmpty() },
+            purpose = purpose.name,
+            unitNumber = cleanUnit,
+            passcode = randomPasscode,
+            vehicleNumber = vehicleNumber?.trim()?.uppercase()?.take(20)?.takeIf { it.isNotEmpty() },
+            status = VisitorStatus.EXPECTED.name,
+            createdAtMillis = now,
+            checkInEpochMillis = null,
+            checkOutEpochMillis = null
+        )
+        dao.upsertVisitorPass(entity)
+        entity.toDomain()
+    }
+
+    suspend fun updateVisitorStatus(
+        passId: String,
+        nextStatus: VisitorStatus
+    ): Result<Unit> = runSafe {
+        val now = System.currentTimeMillis()
+        val checkIn = if (nextStatus == VisitorStatus.CHECKED_IN) now else null
+        val checkOut = if (nextStatus == VisitorStatus.CHECKED_OUT) now else null
+        dao.updateVisitorStatus(
+            passId = passId,
+            status = nextStatus.name,
+            checkInEpochMillis = checkIn,
+            checkOutEpochMillis = checkOut
+        )
+    }
+
+    suspend fun deleteVisitorPass(passId: String): Result<Unit> = runSafe {
+        dao.deleteVisitorPass(passId)
+    }
+
+    suspend fun seedDefaultsIfEmpty(): Result<Unit> = runSafe {
+        val profile = dao.getProfileOnce()
+        if (profile == null) {
+            dao.upsertProfile(
+                UserProfileEntity(
+                    id = "local_profile",
+                    societyName = "Shafi Homes Arcade",
+                    residentName = "Mohammad Asif",
+                    unitLabel = "Tower A - 302",
+                    defaultMonthlyFee = 3500.0,
+                    activeRole = SocietyRole.RESIDENT.name,
+                    createdAtMillis = System.currentTimeMillis(),
+                    updatedAtMillis = System.currentTimeMillis()
+                )
+            )
+        }
+
+        val noticeCount = dao.getNoticesCount()
+        if (noticeCount == 0) {
+            val now = System.currentTimeMillis()
+            dao.upsertNotice(
+                NoticeEntity(
+                    id = UUID.randomUUID().toString(),
+                    title = "Welcome to Shafi Homes Arcade",
+                    content = "Welcome to our smart society management portal. Residents can now pre-approve visitors, view & pay monthly maintenance with UPI, and track building repairs seamlessly.",
+                    category = NoticeCategory.GENERAL.name,
+                    author = "Managing Committee",
+                    isPinned = true,
+                    createdAtMillis = now - 3600_000L * 4
+                )
+            )
+            dao.upsertNotice(
+                NoticeEntity(
+                    id = UUID.randomUUID().toString(),
+                    title = "Overhead Water Tank Cleaning Schedule",
+                    content = "Please note that annual overhead tank disinfection and pressure cleaning will occur this Saturday between 10:00 AM and 02:00 PM. Water supply will be paused temporarily.",
+                    category = NoticeCategory.MAINTENANCE.name,
+                    author = "Facility Manager",
+                    isPinned = false,
+                    createdAtMillis = now - 3600_000L * 2
+                )
+            )
+        }
     }
 
     private suspend inline fun runSafe(crossinline block: suspend () -> Unit): Result<Unit> =

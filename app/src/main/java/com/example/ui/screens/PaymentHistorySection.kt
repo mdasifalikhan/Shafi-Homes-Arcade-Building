@@ -49,6 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -62,6 +63,8 @@ import com.example.ui.components.formatCurrency
 import com.example.ui.components.formatEpochDate
 import com.example.ui.components.formatEpochDateTime
 import com.example.ui.components.formatEpochDay
+import com.example.ui.components.launchUpiPayment
+import com.example.ui.components.sharePaymentReceipt
 import com.example.ui.theme.StatusOverdueBg
 import com.example.ui.theme.StatusOverdueRed
 import com.example.ui.theme.StatusPaidBg
@@ -603,13 +606,24 @@ private fun PaymentTransactionDetailDialog(
             }
         },
         confirmButton = {
+            val context = LocalContext.current
             if (due.statusEnum != DueStatus.PAID) {
-                Button(onClick = onPayNow) {
-                    Text("Record Payment")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { launchUpiPayment(context, due) }) {
+                        Text("Pay via UPI")
+                    }
+                    OutlinedButton(onClick = onPayNow) {
+                        Text("Record")
+                    }
                 }
             } else {
-                Button(onClick = onDismiss) {
-                    Text("Done")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { sharePaymentReceipt(context, due) }) {
+                        Text("Share Receipt")
+                    }
+                    OutlinedButton(onClick = onDismiss) {
+                        Text("Done")
+                    }
                 }
             }
         },

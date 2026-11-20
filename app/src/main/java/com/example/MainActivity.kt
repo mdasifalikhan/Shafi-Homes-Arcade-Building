@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.PrivacyTip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -64,6 +65,7 @@ import com.example.data.local.SocietyRepository
 import com.example.ui.SocietyDashboardState
 import com.example.ui.SocietyViewModel
 import com.example.ui.UiState
+import com.example.ui.components.PrivacyPolicyDialog
 import com.example.ui.navigation.AppDestination
 import com.example.ui.navigation.MaintenanceRequestsRoutes
 import com.example.ui.navigation.ShafiHomesNavHost
@@ -109,6 +111,7 @@ private fun ShafiHomesArcadeApp() {
     var showNewDueSheet by remember { mutableStateOf(false) }
     var showAddContractorSheet by remember { mutableStateOf(false) }
     var showProfileSheet by remember { mutableStateOf(false) }
+    var showPrivacyDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { message ->
@@ -179,6 +182,16 @@ private fun ShafiHomesArcadeApp() {
                     },
                     actions = {
                         IconButton(
+                            onClick = { showPrivacyDialog = true },
+                            modifier = Modifier.testTag("privacy_policy_top_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.PrivacyTip,
+                                contentDescription = "Privacy Policy",
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        IconButton(
                             onClick = { showProfileSheet = true },
                             modifier = Modifier.testTag("profile_settings_button")
                         ) {
@@ -232,6 +245,7 @@ private fun ShafiHomesArcadeApp() {
                         ) {
                             Icon(Icons.Rounded.Add, contentDescription = stringResource(id = R.string.action_add_contractor))
                         }
+                        else -> {}
                     }
                 }
             }
@@ -347,6 +361,17 @@ private fun ShafiHomesArcadeApp() {
                                     viewModel.toggleContractorAvailability(id, avail)
                                 },
                                 onDeleteContractor = { id -> viewModel.deleteContractor(id) },
+                                onPostNotice = { title, content, cat, author, pinned ->
+                                    viewModel.createNotice(title, content, cat, author, pinned)
+                                },
+                                onDeleteNotice = { id -> viewModel.deleteNotice(id) },
+                                onCreateVisitorPass = { name, phone, purpose, unit, vehicle ->
+                                    viewModel.createVisitorPass(name, phone, purpose, unit, vehicle)
+                                },
+                                onUpdateVisitorStatus = { id, next ->
+                                    viewModel.updateVisitorStatus(id, next)
+                                },
+                                onDeleteVisitorPass = { id -> viewModel.deleteVisitorPass(id) },
                                 modifier = Modifier
                                     .widthIn(max = 780.dp)
                                     .fillMaxSize()
@@ -388,7 +413,18 @@ private fun ShafiHomesArcadeApp() {
             onSaveProfile = { soc, res, unit, fee, role ->
                 viewModel.saveProfile(soc, res, unit, fee, role)
                 showProfileSheet = false
+            },
+            onOpenPrivacyPolicy = {
+                showProfileSheet = false
+                showPrivacyDialog = true
             }
+        )
+    }
+
+    if (showPrivacyDialog) {
+        PrivacyPolicyDialog(
+            societyName = loadedState?.profile?.societyName ?: "Shafi Homes Arcade",
+            onDismiss = { showPrivacyDialog = false }
         )
     }
 }

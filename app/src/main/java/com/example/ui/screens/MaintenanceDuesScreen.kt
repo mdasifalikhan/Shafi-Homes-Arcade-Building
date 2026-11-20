@@ -21,6 +21,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
+import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.DeleteOutline
@@ -28,6 +29,7 @@ import androidx.compose.material.icons.rounded.Payments
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -57,6 +59,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -70,8 +73,10 @@ import com.example.ui.SocietyDashboardState
 import com.example.ui.components.DueStatusBadge
 import com.example.ui.components.EmptyStatePanel
 import com.example.ui.components.MonoTag
+import com.example.ui.components.ReceiptDialog
 import com.example.ui.components.formatCurrency
 import com.example.ui.components.formatEpochDay
+import com.example.ui.components.launchUpiPayment
 import com.example.ui.theme.StatusOverdueRed
 import com.example.ui.theme.StatusPaidGreen
 import com.example.ui.theme.StatusPendingAmber
@@ -90,6 +95,8 @@ fun MaintenanceDuesScreen(
     var paymentTarget by remember { mutableStateOf<MaintenanceDue?>(null) }
     var overdueTarget by remember { mutableStateOf<MaintenanceDue?>(null) }
     var deleteTarget by remember { mutableStateOf<MaintenanceDue?>(null) }
+    var receiptTarget by remember { mutableStateOf<MaintenanceDue?>(null) }
+    val context = LocalContext.current
 
     val filteredDues = remember(state.dues, selectedFilter) {
         if (selectedFilter == null) state.dues
@@ -278,7 +285,9 @@ fun MaintenanceDuesScreen(
                         due = due,
                         onCollect = { paymentTarget = due },
                         onMarkOverdue = { overdueTarget = due },
-                        onDelete = { deleteTarget = due }
+                        onDelete = { deleteTarget = due },
+                        onViewReceipt = { receiptTarget = due },
+                        onPayUpi = { launchUpiPayment(context, due, state.profile?.societyName ?: "Shafi Homes Arcade") }
                     )
                 }
             }
@@ -330,6 +339,14 @@ fun MaintenanceDuesScreen(
             }
         )
     }
+
+    receiptTarget?.let { target ->
+        ReceiptDialog(
+            due = target,
+            societyName = state.profile?.societyName ?: "Shafi Homes Arcade",
+            onDismiss = { receiptTarget = null }
+        )
+    }
 }
 
 @Composable
@@ -337,7 +354,9 @@ private fun MaintenanceDueCard(
     due: MaintenanceDue,
     onCollect: () -> Unit,
     onMarkOverdue: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onViewReceipt: () -> Unit,
+    onPayUpi: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -441,31 +460,31 @@ private fun MaintenanceDueCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f),
+                    Button(
+                        onClick = onViewReceipt,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(44.dp),
                         shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.weight(1f)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Rounded.ReceiptLong,
-                                contentDescription = null,
-                                tint = StatusPaidGreen,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(
-                                text = "${due.paymentMethodEnum?.label ?: "Paid"} • ${due.receiptNumber ?: "Verified"}",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = StatusPaidGreen,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.ReceiptLong,
+                            contentDescription = null,
+                            tint = StatusPaidGreen,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "View & Share Receipt",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
+                    Spacer(modifier = Modifier.width(8.dp))
                     IconButton(onClick = onDelete) {
                         Icon(
                             imageVector = Icons.Rounded.DeleteOutline,
@@ -475,42 +494,71 @@ private fun MaintenanceDueCard(
                     }
                 }
             } else {
-                Row(
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Button(
-                        onClick = onCollect,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp)
-                            .testTag("collect_payment_${due.id}"),
-                        shape = RoundedCornerShape(12.dp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Payments,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Record Payment")
-                    }
-                    if (due.statusEnum == DueStatus.PENDING) {
+                        Button(
+                            onClick = onPayUpi,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(46.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.AccountBalanceWallet,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Pay via UPI", fontWeight = FontWeight.Bold)
+                        }
                         OutlinedButton(
-                            onClick = onMarkOverdue,
-                            modifier = Modifier.height(48.dp),
+                            onClick = onCollect,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(46.dp),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("Overdue", color = StatusPendingAmber)
+                            Icon(
+                                imageVector = Icons.Rounded.Payments,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Record")
                         }
                     }
-                    IconButton(onClick = onDelete) {
-                        Icon(
-                            imageVector = Icons.Rounded.DeleteOutline,
-                            contentDescription = "Delete bill",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (due.statusEnum == DueStatus.PENDING) {
+                            TextButton(
+                                onClick = onMarkOverdue,
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
+                            ) {
+                                Text("Mark Overdue", color = StatusPendingAmber, style = MaterialTheme.typography.labelMedium)
+                            }
+                        } else {
+                            Spacer(modifier = Modifier.width(1.dp))
+                        }
+                        IconButton(onClick = onDelete) {
+                            Icon(
+                                imageVector = Icons.Rounded.DeleteOutline,
+                                contentDescription = "Delete bill",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }

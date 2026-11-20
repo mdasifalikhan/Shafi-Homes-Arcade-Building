@@ -13,7 +13,9 @@
 /captures
 .externalNativeBuild
 .cxx
+.vscode/
 local.properties
 .env
 debug.keystore
+*.jks
 *-debug.log

@@ -218,6 +218,42 @@ interface SocietyDao {
             )
         }
     }
+
+    // --- Notice Board ---
+    @Query("SELECT COUNT(*) FROM notices")
+    suspend fun getNoticesCount(): Int
+
+    @Query("SELECT * FROM notices ORDER BY isPinned DESC, createdAtMillis DESC")
+    fun observeNotices(): Flow<List<NoticeEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertNotice(notice: NoticeEntity)
+
+    @Query("DELETE FROM notices WHERE id = :id")
+    suspend fun deleteNotice(id: String)
+
+    // --- Visitor Passes ---
+    @Query("SELECT * FROM visitor_passes ORDER BY createdAtMillis DESC")
+    fun observeVisitorPasses(): Flow<List<VisitorPassEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertVisitorPass(pass: VisitorPassEntity)
+
+    @Query(
+        "UPDATE visitor_passes SET status = :status, " +
+            "checkInEpochMillis = COALESCE(:checkInEpochMillis, checkInEpochMillis), " +
+            "checkOutEpochMillis = COALESCE(:checkOutEpochMillis, checkOutEpochMillis) " +
+            "WHERE id = :passId"
+    )
+    suspend fun updateVisitorStatus(
+        passId: String,
+        status: String,
+        checkInEpochMillis: Long?,
+        checkOutEpochMillis: Long?
+    )
+
+    @Query("DELETE FROM visitor_passes WHERE id = :passId")
+    suspend fun deleteVisitorPass(passId: String)
 }
 
 data class TicketScheduleUpdate(

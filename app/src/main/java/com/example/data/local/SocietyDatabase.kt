@@ -11,9 +11,11 @@ import androidx.room.RoomDatabase
         MaintenanceDueEntity::class,
         ContractorEntity::class,
         RepairTicketEntity::class,
-        ScheduleEntryEntity::class
+        ScheduleEntryEntity::class,
+        NoticeEntity::class,
+        VisitorPassEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class SocietyDatabase : RoomDatabase() {
@@ -29,7 +31,9 @@ abstract class SocietyDatabase : RoomDatabase() {
                     context.applicationContext,
                     SocietyDatabase::class.java,
                     "shafi_homes_arcade.db"
-                ).build().also { INSTANCE = it }
+                )
+                    .fallbackToDestructiveMigration()
+                    .build().also { INSTANCE = it }
             }
         }
     }

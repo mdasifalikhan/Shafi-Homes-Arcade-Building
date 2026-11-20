@@ -7,6 +7,8 @@ import com.example.data.local.SocietyRepository
 import com.example.data.model.Contractor
 import com.example.data.model.DueStatus
 import com.example.data.model.MaintenanceDue
+import com.example.data.model.Notice
+import com.example.data.model.NoticeCategory
 import com.example.data.model.PaymentMethod
 import com.example.data.model.RepairTicket
 import com.example.data.model.ScheduleEntry
@@ -17,6 +19,9 @@ import com.example.data.model.TicketPriority
 import com.example.data.model.TicketStatus
 import com.example.data.model.TradeCategory
 import com.example.data.model.UserProfile
+import com.example.data.model.VisitorPass
+import com.example.data.model.VisitorPurpose
+import com.example.data.model.VisitorStatus
 import com.example.data.scheduling.AutoScheduler
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
@@ -53,6 +58,8 @@ data class SocietyDashboardState(
     val contractors: List<Contractor> = emptyList(),
     val tickets: List<RepairTicket> = emptyList(),
     val schedules: List<ScheduleEntry> = emptyList(),
+    val notices: List<Notice> = emptyList(),
+    val visitors: List<VisitorPass> = emptyList(),
     val metrics: SocietyMetrics = SocietyMetrics(),
     val unscheduledDiagnostics: Map<String, String> = emptyMap()
 )
@@ -87,6 +94,14 @@ class SocietyViewModel(
     private val contractorsFlow = repository.observeContractors().toUiState("contractors")
     private val ticketsFlow = repository.observeRepairTickets().toUiState("repair tickets")
     private val schedulesFlow = repository.observeScheduleEntries().toUiState("schedule entries")
+    private val noticesFlow = repository.observeNotices().toUiState("notices")
+    private val visitorsFlow = repository.observeVisitorPasses().toUiState("visitor passes")
+
+    init {
+        viewModelScope.launch {
+            repository.seedDefaultsIfEmpty()
+        }
+    }
 
     val uiState: StateFlow<UiState<SocietyDashboardState>> = combine(
         profileFlow,
@@ -94,6 +109,8 @@ class SocietyViewModel(
         contractorsFlow,
         ticketsFlow,
         schedulesFlow,
+        noticesFlow,
+        visitorsFlow,
         _unscheduledReasons
     ) { values ->
         @Suppress("UNCHECKED_CAST")
@@ -107,9 +124,13 @@ class SocietyViewModel(
         @Suppress("UNCHECKED_CAST")
         val schedulesState = values[4] as UiState<List<ScheduleEntry>>
         @Suppress("UNCHECKED_CAST")
-        val diagnostics = values[5] as Map<String, String>
+        val noticesState = values[5] as UiState<List<Notice>>
+        @Suppress("UNCHECKED_CAST")
+        val visitorsState = values[6] as UiState<List<VisitorPass>>
+        @Suppress("UNCHECKED_CAST")
+        val diagnostics = values[7] as Map<String, String>
 
-        val firstError = listOf(profileState, duesState, contractorsState, ticketsState, schedulesState)
+        val firstError = listOf(profileState, duesState, contractorsState, ticketsState, schedulesState, noticesState, visitorsState)
             .filterIsInstance<UiState.Error>()
             .firstOrNull()
 
@@ -117,7 +138,7 @@ class SocietyViewModel(
             return@combine firstError
         }
 
-        val anyLoading = listOf(profileState, duesState, contractorsState, ticketsState, schedulesState)
+        val anyLoading = listOf(profileState, duesState, contractorsState, ticketsState, schedulesState, noticesState, visitorsState)
             .any { it is UiState.Loading }
 
         if (anyLoading) {
@@ -140,6 +161,13 @@ class SocietyViewModel(
                     .thenBy { it.slotEnum.startHour }
                     .thenByDescending { it.priorityEnum.rank }
             )
+        val notices = (noticesState as UiState.Success).data
+            .sortedWith(
+                compareByDescending<Notice> { it.isPinned }
+                    .thenByDescending { it.createdAtMillis }
+            )
+        val visitors = (visitorsState as UiState.Success).data
+            .sortedByDescending { it.createdAtMillis }
 
         val collected = dues.filter { it.statusEnum == DueStatus.PAID }.sumOf { it.totalAmount }
         val pending = dues.filter { it.statusEnum == DueStatus.PENDING }.sumOf { it.totalAmount }
@@ -167,6 +195,8 @@ class SocietyViewModel(
                 contractors = contractors,
                 tickets = tickets,
                 schedules = schedules,
+                notices = notices,
+                visitors = visitors,
                 metrics = SocietyMetrics(
                     collectedAmount = collected,
                     pendingAmount = pending,
@@ -434,6 +464,59 @@ class SocietyViewModel(
     fun rescheduleVisit(entry: ScheduleEntry, newEpochDay: Long, newSlot: ScheduleSlot) {
         launchMutation("Visit rescheduled to ${newSlot.windowText}") {
             repository.rescheduleEntry(entry, newEpochDay, newSlot)
+        }
+    }
+
+    fun createNotice(
+        title: String,
+        content: String,
+        category: NoticeCategory,
+        author: String = "Managing Committee",
+        isPinned: Boolean = false
+    ) {
+        launchMutation("Notice published to board") {
+            repository.createNotice(title, content, category, author, isPinned)
+        }
+    }
+
+    fun deleteNotice(id: String) {
+        launchMutation("Notice deleted") {
+            repository.deleteNotice(id)
+        }
+    }
+
+    fun createVisitorPass(
+        visitorName: String,
+        phone: String?,
+        purpose: VisitorPurpose,
+        unitNumber: String,
+        vehicleNumber: String? = null
+    ) {
+        viewModelScope.launch {
+            _isBusy.value = true
+            try {
+                repository.createVisitorPass(visitorName, phone, purpose, unitNumber, vehicleNumber)
+                    .onSuccess { pass ->
+                        _events.tryEmit("Pass created for ${pass.visitorName} • Code: ${pass.passcode}")
+                    }
+                    .onFailure { err ->
+                        _events.tryEmit(err.localizedMessage ?: "Failed to create pass")
+                    }
+            } finally {
+                _isBusy.value = false
+            }
+        }
+    }
+
+    fun updateVisitorStatus(passId: String, nextStatus: VisitorStatus) {
+        launchMutation("Visitor marked as ${nextStatus.label}") {
+            repository.updateVisitorStatus(passId, nextStatus)
+        }
+    }
+
+    fun deleteVisitorPass(passId: String) {
+        launchMutation("Visitor pass removed") {
+            repository.deleteVisitorPass(passId)
         }
     }
 

@@ -208,3 +208,68 @@ data class ScheduleEntry(
     val slotEnum: ScheduleSlot get() = ScheduleSlot.fromRaw(timeSlot)
     val statusEnum: ScheduleStatus get() = ScheduleStatus.fromRaw(status)
 }
+
+enum class NoticeCategory(val label: String) {
+    GENERAL("General Notice"),
+    MAINTENANCE("Maintenance Alert"),
+    EMERGENCY("Emergency Notice"),
+    EVENT("Community Event");
+
+    companion object {
+        fun fromRaw(raw: String?): NoticeCategory =
+            entries.firstOrNull { it.name == raw } ?: GENERAL
+    }
+}
+
+data class Notice(
+    val id: String = "",
+    val title: String = "",
+    val content: String = "",
+    val category: String = NoticeCategory.GENERAL.name,
+    val author: String = "Managing Committee",
+    val isPinned: Boolean = false,
+    val createdAtMillis: Long = 0L
+) {
+    val categoryEnum: NoticeCategory get() = NoticeCategory.fromRaw(category)
+}
+
+enum class VisitorPurpose(val label: String) {
+    GUEST("Guest / Friend"),
+    DELIVERY("Delivery (Swiggy / Amazon)"),
+    CAB("Cab / Taxi"),
+    SERVICE("Home Service / Repair");
+
+    companion object {
+        fun fromRaw(raw: String?): VisitorPurpose =
+            entries.firstOrNull { it.name == raw } ?: GUEST
+    }
+}
+
+enum class VisitorStatus(val label: String) {
+    EXPECTED("Expected"),
+    CHECKED_IN("Checked In"),
+    CHECKED_OUT("Checked Out");
+
+    companion object {
+        fun fromRaw(raw: String?): VisitorStatus =
+            entries.firstOrNull { it.name == raw } ?: EXPECTED
+    }
+}
+
+data class VisitorPass(
+    val id: String = "",
+    val visitorName: String = "",
+    val phone: String? = null,
+    val purpose: String = VisitorPurpose.GUEST.name,
+    val unitNumber: String = "",
+    val passcode: String = "",
+    val vehicleNumber: String? = null,
+    val status: String = VisitorStatus.EXPECTED.name,
+    val createdAtMillis: Long = 0L,
+    val checkInEpochMillis: Long? = null,
+    val checkOutEpochMillis: Long? = null
+) {
+    val purposeEnum: VisitorPurpose get() = VisitorPurpose.fromRaw(purpose)
+    val statusEnum: VisitorStatus get() = VisitorStatus.fromRaw(status)
+}
+

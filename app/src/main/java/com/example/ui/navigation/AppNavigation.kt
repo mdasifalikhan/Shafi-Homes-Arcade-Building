@@ -4,10 +4,14 @@ import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Build
+import androidx.compose.material.icons.outlined.Campaign
 import androidx.compose.material.icons.outlined.Engineering
+import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.Build
+import androidx.compose.material.icons.rounded.Campaign
 import androidx.compose.material.icons.rounded.Engineering
+import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -17,6 +21,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navigation
 import com.example.R
 import com.example.data.model.MaintenanceDue
+import com.example.data.model.NoticeCategory
 import com.example.data.model.PaymentMethod
 import com.example.data.model.RepairTicket
 import com.example.data.model.ScheduleEntry
@@ -25,11 +30,15 @@ import com.example.data.model.ScheduleStatus
 import com.example.data.model.TicketPriority
 import com.example.data.model.TicketStatus
 import com.example.data.model.TradeCategory
+import com.example.data.model.VisitorPurpose
+import com.example.data.model.VisitorStatus
 import com.example.ui.SocietyDashboardState
 import com.example.ui.screens.MaintenanceDuesScreen
 import com.example.ui.screens.NewMaintenanceRequestScreen
+import com.example.ui.screens.NoticeBoardScreen
 import com.example.ui.screens.RepairLogsScreen
 import com.example.ui.screens.ScheduleScreen
+import com.example.ui.screens.VisitorPassScreen
 
 object MaintenanceRequestsRoutes {
     const val LIST = "maintenance_requests/list"
@@ -43,6 +52,20 @@ enum class AppDestination(
     val unselectedIcon: ImageVector,
     val navTestTag: String
 ) {
+    NOTICE_BOARD(
+        route = "notice_board",
+        labelRes = R.string.nav_notice_board,
+        selectedIcon = Icons.Rounded.Campaign,
+        unselectedIcon = Icons.Outlined.Campaign,
+        navTestTag = "nav_notice_board"
+    ),
+    VISITOR_PASS(
+        route = "visitor_pass",
+        labelRes = R.string.nav_visitor_pass,
+        selectedIcon = Icons.Rounded.Shield,
+        unselectedIcon = Icons.Outlined.Shield,
+        navTestTag = "nav_visitor_pass"
+    ),
     MAINTENANCE_REQUESTS(
         route = "maintenance_requests",
         labelRes = R.string.nav_maintenance_requests,
@@ -67,12 +90,14 @@ enum class AppDestination(
 
     companion object {
         fun fromRoute(route: String?): AppDestination = when {
-            route == null -> MAINTENANCE_REQUESTS
+            route == null -> NOTICE_BOARD
+            route == NOTICE_BOARD.route -> NOTICE_BOARD
+            route == VISITOR_PASS.route -> VISITOR_PASS
             route == MAINTENANCE_REQUESTS.route || route.startsWith("${MAINTENANCE_REQUESTS.route}/") ->
                 MAINTENANCE_REQUESTS
             route == PAYMENT_COLLECTION.route -> PAYMENT_COLLECTION
             route == CONTRACTOR_DASHBOARD.route -> CONTRACTOR_DASHBOARD
-            else -> MAINTENANCE_REQUESTS
+            else -> NOTICE_BOARD
         }
     }
 }
@@ -105,14 +130,34 @@ fun ShafiHomesNavHost(
     onOpenAddContractor: () -> Unit,
     onToggleContractorAvailable: (String, Boolean) -> Unit,
     onDeleteContractor: (String) -> Unit,
+    onPostNotice: (title: String, content: String, category: NoticeCategory, author: String, isPinned: Boolean) -> Unit,
+    onDeleteNotice: (String) -> Unit,
+    onCreateVisitorPass: (visitorName: String, phone: String?, purpose: VisitorPurpose, unitNumber: String, vehicleNumber: String?) -> Unit,
+    onUpdateVisitorStatus: (passId: String, nextStatus: VisitorStatus) -> Unit,
+    onDeleteVisitorPass: (String) -> Unit,
     modifier: Modifier = Modifier,
-    startDestination: AppDestination = AppDestination.MAINTENANCE_REQUESTS
+    startDestination: AppDestination = AppDestination.NOTICE_BOARD
 ) {
     NavHost(
         navController = navController,
         startDestination = startDestination.route,
         modifier = modifier
     ) {
+        composable(AppDestination.NOTICE_BOARD.route) {
+            NoticeBoardScreen(
+                state = state,
+                onPostNotice = onPostNotice,
+                onDeleteNotice = onDeleteNotice
+            )
+        }
+        composable(AppDestination.VISITOR_PASS.route) {
+            VisitorPassScreen(
+                state = state,
+                onCreatePass = onCreateVisitorPass,
+                onUpdateStatus = onUpdateVisitorStatus,
+                onDeletePass = onDeleteVisitorPass
+            )
+        }
         navigation(
             startDestination = MaintenanceRequestsRoutes.LIST,
             route = AppDestination.MAINTENANCE_REQUESTS.route

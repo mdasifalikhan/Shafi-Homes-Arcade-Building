@@ -4,9 +4,11 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.example.data.model.Contractor
 import com.example.data.model.MaintenanceDue
+import com.example.data.model.Notice
 import com.example.data.model.RepairTicket
 import com.example.data.model.ScheduleEntry
 import com.example.data.model.UserProfile
+import com.example.data.model.VisitorPass
 
 @Entity(tableName = "user_profile")
 data class UserProfileEntity(
@@ -186,3 +188,54 @@ data class ScheduleEntryEntity(
         updatedAtMillis = updatedAtMillis
     )
 }
+
+@Entity(tableName = "notices")
+data class NoticeEntity(
+    @PrimaryKey val id: String,
+    val title: String,
+    val content: String,
+    val category: String,
+    val author: String,
+    val isPinned: Boolean,
+    val createdAtMillis: Long
+) {
+    fun toDomain(): Notice = Notice(
+        id = id,
+        title = title,
+        content = content,
+        category = category,
+        author = author,
+        isPinned = isPinned,
+        createdAtMillis = createdAtMillis
+    )
+}
+
+@Entity(tableName = "visitor_passes")
+data class VisitorPassEntity(
+    @PrimaryKey val id: String,
+    val visitorName: String,
+    val phone: String?,
+    val purpose: String,
+    val unitNumber: String,
+    val passcode: String,
+    val vehicleNumber: String?,
+    val status: String,
+    val createdAtMillis: Long,
+    val checkInEpochMillis: Long?,
+    val checkOutEpochMillis: Long?
+) {
+    fun toDomain(): VisitorPass = VisitorPass(
+        id = id,
+        visitorName = visitorName,
+        phone = phone,
+        purpose = purpose,
+        unitNumber = unitNumber,
+        passcode = passcode,
+        vehicleNumber = vehicleNumber,
+        status = status,
+        createdAtMillis = createdAtMillis,
+        checkInEpochMillis = checkInEpochMillis,
+        checkOutEpochMillis = checkOutEpochMillis
+    )
+}
+
