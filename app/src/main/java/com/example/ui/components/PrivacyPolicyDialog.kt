@@ -120,7 +120,7 @@ fun PrivacyPolicyDialog(
 
                 PolicySection(
                     title = "7. Contact & Support",
-                    body = "If you have questions regarding this Privacy Policy, please contact the $societyName Management Office or email support@shafihomes.com."
+                    body = "If you have questions regarding this Privacy Policy, please contact the $societyName Management Office or email asifalikhan@programmer.com."
                 )
             }
         },
@@ -166,7 +166,7 @@ private fun sharePrivacyPolicy(context: Context, societyName: String) {
         • Safe UPI Payments: All payments are routed directly to certified UPI banking apps (Google Pay, PhonePe, Paytm). No banking credentials or PINs are ever stored.
         • User Control: Records can be viewed, updated, or removed directly in the app.
         
-        For inquiries, contact: support@shafihomes.com
+        For inquiries, contact: asifalikhan@programmer.com
         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     """.trimIndent()
 
