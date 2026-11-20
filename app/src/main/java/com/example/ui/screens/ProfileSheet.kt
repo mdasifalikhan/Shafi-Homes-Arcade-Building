@@ -1,5 +1,8 @@
 package com.example.ui.screens
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -20,6 +23,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PrivacyTip
+import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -40,13 +45,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.R
-import androidx.compose.ui.unit.dp
 import com.example.data.model.SocietyRole
 import com.example.data.model.UserProfile
 import com.example.ui.theme.StatusOverdueRed
@@ -65,6 +71,7 @@ fun ProfileSheet(
     ) -> Unit,
     onOpenPrivacyPolicy: () -> Unit
 ) {
+    val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var societyName by remember(profile) { mutableStateOf(profile?.societyName ?: "Shafi Homes Arcade") }
     var residentName by remember(profile) { mutableStateOf(profile?.residentName ?: "Society Member") }
@@ -196,6 +203,77 @@ fun ProfileSheet(
                 Text("Save Society Settings")
             }
 
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        val sendIntent = Intent().apply {
+                            action = Intent.ACTION_SEND
+                            putExtra(
+                                Intent.EXTRA_TEXT,
+                                "🏢 Download the official Shafi Homes Arcade Society App!\n\nPay maintenance dues via UPI, generate visitor gate passes, and view society notices.\n\nDownload on Google Play: https://play.google.com/store/apps/details?id=shafi.homes.arcade"
+                            )
+                            type = "text/plain"
+                        }
+                        val shareIntent = Intent.createChooser(sendIntent, "Share Shafi Homes Arcade App")
+                        context.startActivity(shareIntent)
+                    },
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp)
+                        .testTag("share_app_sheet_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Share,
+                        contentDescription = "Share App",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Share App")
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        val packageName = "shafi.homes.arcade"
+                        try {
+                            context.startActivity(
+                                Intent(
+                                    Intent.ACTION_VIEW,
+                                    Uri.parse("market://details?id=$packageName")
+                                ).apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                            )
+                        } catch (e: ActivityNotFoundException) {
+                            context.startActivity(
+                                Intent(
+                                    Intent.ACTION_VIEW,
+                                    Uri.parse("https://play.google.com/store/apps/details?id=$packageName")
+                                ).apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                            )
+                        }
+                    },
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp)
+                        .testTag("update_app_sheet_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.SystemUpdate,
+                        contentDescription = "Update App",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Update App")
+                }
+            }
+
             OutlinedButton(
                 onClick = onOpenPrivacyPolicy,
                 shape = RoundedCornerShape(14.dp),
@@ -212,6 +290,16 @@ fun ProfileSheet(
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Privacy Policy")
             }
+
+            Text(
+                text = "Shafi Homes Arcade • Version 1.0 (Build 1)",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 2.dp),
+                textAlign = TextAlign.Center
+            )
         }
     }
 }

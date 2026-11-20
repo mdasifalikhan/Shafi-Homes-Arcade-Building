@@ -1,5 +1,6 @@
 package com.example
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.PrivacyTip
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -52,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -140,6 +143,7 @@ private fun ShafiHomesArcadeApp() {
         }
     }
 
+    val context = LocalContext.current
     val loadedState = (uiState as? UiState.Success)?.data
     val destinationLabel = if (isNewRequestScreen) {
         stringResource(id = R.string.title_new_maintenance_request)
@@ -203,6 +207,27 @@ private fun ShafiHomesArcadeApp() {
                         }
                     },
                     actions = {
+                        IconButton(
+                            onClick = {
+                                val sendIntent = Intent().apply {
+                                    action = Intent.ACTION_SEND
+                                    putExtra(
+                                        Intent.EXTRA_TEXT,
+                                        "🏢 Download the official Shafi Homes Arcade Society App!\n\nPay maintenance dues via UPI, generate visitor gate passes, and view society notices.\n\nDownload on Google Play: https://play.google.com/store/apps/details?id=shafi.homes.arcade"
+                                    )
+                                    type = "text/plain"
+                                }
+                                val shareIntent = Intent.createChooser(sendIntent, "Share Shafi Homes Arcade App")
+                                context.startActivity(shareIntent)
+                            },
+                            modifier = Modifier.testTag("share_app_top_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Share,
+                                contentDescription = "Share App",
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                         IconButton(
                             onClick = { showPrivacyDialog = true },
                             modifier = Modifier.testTag("privacy_policy_top_button")
