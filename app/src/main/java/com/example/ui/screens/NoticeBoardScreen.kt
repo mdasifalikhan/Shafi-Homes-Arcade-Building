@@ -73,6 +73,7 @@ fun NoticeBoardScreen(
     onNavigateToPolls: () -> Unit = {},
     onNavigateToHelpers: () -> Unit = {},
     onNavigateToHub: () -> Unit = {},
+    onNavigateToSecurityTerminal: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var selectedCategory by remember { mutableStateOf<NoticeCategory?>(null) }
@@ -149,6 +150,13 @@ fun NoticeBoardScreen(
                     textColor = Color(0xFF047857),
                     borderColor = Color(0xFFA7F3D0),
                     onClick = onNavigateToHelpers
+                )
+                QuickActionChip(
+                    label = "🛡️ Gate Terminal",
+                    containerColor = Color(0xFFF1F5F9),
+                    textColor = Color(0xFF1E293B),
+                    borderColor = Color(0xFFCBD5E1),
+                    onClick = onNavigateToSecurityTerminal
                 )
                 QuickActionChip(
                     label = "✨ Services Hub",

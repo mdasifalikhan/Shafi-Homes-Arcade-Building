@@ -3,7 +3,8 @@ package com.example.data.model
 enum class SocietyRole(val label: String, val subtitle: String) {
     RESIDENT("Resident", "View dues & log flat/common repairs"),
     MANAGER("Committee", "Collect maintenance & dispatch contractors"),
-    CONTRACTOR("Contractor", "Execute auto-scheduled repair visits");
+    CONTRACTOR("Contractor", "Execute auto-scheduled repair visits"),
+    SECURITY_GUARD("Security Guard", "Gate Terminal: Check in visitors & staff");
 
     companion object {
         fun fromRaw(raw: String?): SocietyRole =

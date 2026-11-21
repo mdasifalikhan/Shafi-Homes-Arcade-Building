@@ -48,6 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.EmergencyContact
+import com.example.util.NotificationHelper
 
 @Composable
 fun EmergencySosScreen(
@@ -109,6 +110,11 @@ fun EmergencySosScreen(
 
                     Button(
                         onClick = {
+                            NotificationHelper.showEmergencySosNotification(
+                                context = context,
+                                alertTitle = "Resident SOS Triggered!",
+                                details = "Unit $unitLabel ($residentName) triggered an emergency assistance request."
+                            )
                             val alertMsg = "🚨 *EMERGENCY SOS ALERT!*\n" +
                                     "━━━━━━━━━━━━━━━━━━━━\n" +
                                     "Society: $societyName\n" +

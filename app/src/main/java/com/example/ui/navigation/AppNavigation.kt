@@ -41,6 +41,7 @@ import com.example.ui.screens.NewMaintenanceRequestScreen
 import com.example.ui.screens.NoticeBoardScreen
 import com.example.ui.screens.RepairLogsScreen
 import com.example.ui.screens.ScheduleScreen
+import com.example.ui.screens.SecurityTerminalScreen
 import com.example.ui.screens.ServicesHubScreen
 import com.example.ui.screens.SocietyDirectoryScreen
 import com.example.ui.screens.SocietyPollsScreen
@@ -59,6 +60,7 @@ object CommunityRoutes {
     const val POLLS = "community/polls"
     const val HELPERS = "community/helpers"
     const val CONTRACTORS = "community/contractors"
+    const val SECURITY_TERMINAL = "community/security_terminal"
 }
 
 enum class AppDestination(
@@ -185,7 +187,8 @@ fun ShafiHomesNavHost(
                 onNavigateToDirectory = { navController.navigate(CommunityRoutes.DIRECTORY) },
                 onNavigateToPolls = { navController.navigate(CommunityRoutes.POLLS) },
                 onNavigateToHelpers = { navController.navigate(CommunityRoutes.HELPERS) },
-                onNavigateToHub = { navController.navigate(AppDestination.COMMUNITY_HUB.route) }
+                onNavigateToHub = { navController.navigate(AppDestination.COMMUNITY_HUB.route) },
+                onNavigateToSecurityTerminal = { navController.navigate(CommunityRoutes.SECURITY_TERMINAL) }
             )
         }
 
@@ -209,7 +212,8 @@ fun ShafiHomesNavHost(
                 onNavigateToPolls = { navController.navigate(CommunityRoutes.POLLS) },
                 onNavigateToHelpers = { navController.navigate(CommunityRoutes.HELPERS) },
                 onNavigateToContractors = { navController.navigate(CommunityRoutes.CONTRACTORS) },
-                onNavigateToVisitorPass = { navController.navigate(AppDestination.VISITOR_PASS.route) }
+                onNavigateToVisitorPass = { navController.navigate(AppDestination.VISITOR_PASS.route) },
+                onNavigateToSecurityTerminal = { navController.navigate(CommunityRoutes.SECURITY_TERMINAL) }
             )
         }
 
@@ -271,6 +275,16 @@ fun ShafiHomesNavHost(
                 onOpenAddContractor = onOpenAddContractor,
                 onToggleContractorAvailable = onToggleContractorAvailable,
                 onDeleteContractor = onDeleteContractor
+            )
+        }
+
+        // 3g. Security Guard Gate Terminal
+        composable(CommunityRoutes.SECURITY_TERMINAL) {
+            SecurityTerminalScreen(
+                state = state,
+                onUpdateVisitorStatus = onUpdateVisitorStatus,
+                onCreateWalkInPass = onCreateVisitorPass,
+                onToggleHelperStatus = onToggleHelperStatus
             )
         }
 

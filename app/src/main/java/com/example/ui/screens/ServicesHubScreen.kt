@@ -61,6 +61,7 @@ fun ServicesHubScreen(
     onNavigateToHelpers: () -> Unit,
     onNavigateToContractors: () -> Unit,
     onNavigateToVisitorPass: () -> Unit,
+    onNavigateToSecurityTerminal: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val activeBookings = state.amenityBookings.count { it.status == "CONFIRMED" }
@@ -260,6 +261,20 @@ fun ServicesHubScreen(
                 badgeBackgroundColor = Color(0xFFF5F3FF),
                 badgeTextColor = Color(0xFF6D28D9),
                 onClick = onNavigateToVisitorPass
+            )
+        }
+
+        // Feature 7: Guard Gate Terminal Kiosk
+        item {
+            HubFeatureCard(
+                title = "Guard Gate Terminal (PIN Validator)",
+                subtitle = "Terminal for security guard: 4-digit PIN verification, check-in & walk-ins",
+                badgeText = "Gate Kiosk Mode",
+                icon = Icons.Rounded.Security,
+                iconBackgroundColor = Color(0xFF0F172A),
+                badgeBackgroundColor = Color(0xFFF1F5F9),
+                badgeTextColor = Color(0xFF334155),
+                onClick = onNavigateToSecurityTerminal
             )
         }
 

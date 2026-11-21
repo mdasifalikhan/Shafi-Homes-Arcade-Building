@@ -1,10 +1,14 @@
 package com.example
 
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.content.ContextCompat
+import com.example.util.NotificationHelper
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -95,6 +99,12 @@ import com.example.ui.theme.CivicNestTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        NotificationHelper.createNotificationChannels(this)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 101)
+            }
+        }
         enableEdgeToEdge()
         setContent {
             CivicNestTheme {
@@ -132,7 +142,8 @@ private fun ShafiHomesArcadeApp() {
         CommunityRoutes.DIRECTORY,
         CommunityRoutes.POLLS,
         CommunityRoutes.HELPERS,
-        CommunityRoutes.CONTRACTORS
+        CommunityRoutes.CONTRACTORS,
+        CommunityRoutes.SECURITY_TERMINAL
     )
 
     var showNewDueSheet by remember { mutableStateOf(false) }
@@ -170,6 +181,7 @@ private fun ShafiHomesArcadeApp() {
         CommunityRoutes.POLLS -> stringResource(id = R.string.title_polls)
         CommunityRoutes.HELPERS -> stringResource(id = R.string.title_helpers)
         CommunityRoutes.CONTRACTORS -> stringResource(id = R.string.nav_contractor_dashboard)
+        CommunityRoutes.SECURITY_TERMINAL -> "Gate Security Terminal"
         else -> stringResource(id = currentDestination.labelRes)
     }
     val societySubtitle = loadedState?.profile?.societyName ?: stringResource(id = R.string.app_name)
@@ -465,10 +477,12 @@ private fun ShafiHomesArcadeApp() {
                                 onDeleteContractor = { id -> viewModel.deleteContractor(id) },
                                 onPostNotice = { title, content, cat, author, pinned ->
                                     viewModel.createNotice(title, content, cat, author, pinned)
+                                    NotificationHelper.showNoticePublishedNotification(context, title, author)
                                 },
                                 onDeleteNotice = { id -> viewModel.deleteNotice(id) },
                                 onCreateVisitorPass = { name, phone, purpose, unit, vehicle ->
                                     viewModel.createVisitorPass(name, phone, purpose, unit, vehicle)
+                                    NotificationHelper.showVisitorArrivalNotification(context, name, purpose.label, unit, "Pre-Approved")
                                 },
                                 onUpdateVisitorStatus = { id, next ->
                                     viewModel.updateVisitorStatus(id, next)
@@ -476,6 +490,7 @@ private fun ShafiHomesArcadeApp() {
                                 onDeleteVisitorPass = { id -> viewModel.deleteVisitorPass(id) },
                                 onBookAmenity = { amenityId, amenityName, resName, unit, epochDay, slot, purpose ->
                                     viewModel.bookAmenity(amenityId, amenityName, resName, unit, epochDay, slot, purpose)
+                                    NotificationHelper.showAmenityConfirmedNotification(context, amenityName, slot, resName)
                                 },
                                 onCancelAmenityBooking = { bookingId ->
                                     viewModel.cancelAmenityBooking(bookingId)
