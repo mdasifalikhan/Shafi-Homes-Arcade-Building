@@ -4,8 +4,13 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.local.SocietyRepository
+import com.example.data.model.Amenity
+import com.example.data.model.AmenityBooking
 import com.example.data.model.Contractor
+import com.example.data.model.DirectoryEntry
+import com.example.data.model.DomesticHelper
 import com.example.data.model.DueStatus
+import com.example.data.model.EmergencyContact
 import com.example.data.model.MaintenanceDue
 import com.example.data.model.Notice
 import com.example.data.model.NoticeCategory
@@ -14,6 +19,7 @@ import com.example.data.model.RepairTicket
 import com.example.data.model.ScheduleEntry
 import com.example.data.model.ScheduleSlot
 import com.example.data.model.ScheduleStatus
+import com.example.data.model.SocietyPoll
 import com.example.data.model.SocietyRole
 import com.example.data.model.TicketPriority
 import com.example.data.model.TicketStatus
@@ -60,6 +66,12 @@ data class SocietyDashboardState(
     val schedules: List<ScheduleEntry> = emptyList(),
     val notices: List<Notice> = emptyList(),
     val visitors: List<VisitorPass> = emptyList(),
+    val amenities: List<Amenity> = emptyList(),
+    val amenityBookings: List<AmenityBooking> = emptyList(),
+    val polls: List<SocietyPoll> = emptyList(),
+    val helpers: List<DomesticHelper> = emptyList(),
+    val directory: List<DirectoryEntry> = emptyList(),
+    val emergencyContacts: List<EmergencyContact> = emptyList(),
     val metrics: SocietyMetrics = SocietyMetrics(),
     val unscheduledDiagnostics: Map<String, String> = emptyMap()
 )
@@ -96,6 +108,10 @@ class SocietyViewModel(
     private val schedulesFlow = repository.observeScheduleEntries().toUiState("schedule entries")
     private val noticesFlow = repository.observeNotices().toUiState("notices")
     private val visitorsFlow = repository.observeVisitorPasses().toUiState("visitor passes")
+    private val amenityBookingsFlow = repository.observeAmenityBookings().toUiState("amenity bookings")
+    private val pollsFlow = repository.observeSocietyPolls().toUiState("society polls")
+    private val helpersFlow = repository.observeDomesticHelpers().toUiState("domestic helpers")
+    private val directoryFlow = repository.observeDirectory().toUiState("directory")
 
     init {
         viewModelScope.launch {
@@ -111,6 +127,10 @@ class SocietyViewModel(
         schedulesFlow,
         noticesFlow,
         visitorsFlow,
+        amenityBookingsFlow,
+        pollsFlow,
+        helpersFlow,
+        directoryFlow,
         _unscheduledReasons
     ) { values ->
         @Suppress("UNCHECKED_CAST")
@@ -128,20 +148,28 @@ class SocietyViewModel(
         @Suppress("UNCHECKED_CAST")
         val visitorsState = values[6] as UiState<List<VisitorPass>>
         @Suppress("UNCHECKED_CAST")
-        val diagnostics = values[7] as Map<String, String>
+        val amenityBookingsState = values[7] as UiState<List<AmenityBooking>>
+        @Suppress("UNCHECKED_CAST")
+        val pollsState = values[8] as UiState<List<SocietyPoll>>
+        @Suppress("UNCHECKED_CAST")
+        val helpersState = values[9] as UiState<List<DomesticHelper>>
+        @Suppress("UNCHECKED_CAST")
+        val directoryState = values[10] as UiState<List<DirectoryEntry>>
+        @Suppress("UNCHECKED_CAST")
+        val diagnostics = values[11] as Map<String, String>
 
-        val firstError = listOf(profileState, duesState, contractorsState, ticketsState, schedulesState, noticesState, visitorsState)
-            .filterIsInstance<UiState.Error>()
-            .firstOrNull()
+        val allStates = listOf(
+            profileState, duesState, contractorsState, ticketsState,
+            schedulesState, noticesState, visitorsState,
+            amenityBookingsState, pollsState, helpersState, directoryState
+        )
 
+        val firstError = allStates.filterIsInstance<UiState.Error>().firstOrNull()
         if (firstError != null) {
             return@combine firstError
         }
 
-        val anyLoading = listOf(profileState, duesState, contractorsState, ticketsState, schedulesState, noticesState, visitorsState)
-            .any { it is UiState.Loading }
-
-        if (anyLoading) {
+        if (allStates.any { it is UiState.Loading }) {
             return@combine UiState.Loading
         }
 
@@ -168,6 +196,14 @@ class SocietyViewModel(
             )
         val visitors = (visitorsState as UiState.Success).data
             .sortedByDescending { it.createdAtMillis }
+        val amenityBookings = (amenityBookingsState as UiState.Success).data
+            .sortedByDescending { it.createdAtMillis }
+        val polls = (pollsState as UiState.Success).data
+            .sortedByDescending { it.createdAtMillis }
+        val helpers = (helpersState as UiState.Success).data
+            .sortedBy { it.name }
+        val directory = (directoryState as UiState.Success).data
+            .sortedWith(compareBy({ it.category }, { it.unitNumber }, { it.name }))
 
         val collected = dues.filter { it.statusEnum == DueStatus.PAID }.sumOf { it.totalAmount }
         val pending = dues.filter { it.statusEnum == DueStatus.PENDING }.sumOf { it.totalAmount }
@@ -197,6 +233,12 @@ class SocietyViewModel(
                 schedules = schedules,
                 notices = notices,
                 visitors = visitors,
+                amenities = repository.getAmenitiesList(),
+                amenityBookings = amenityBookings,
+                polls = polls,
+                helpers = helpers,
+                directory = directory,
+                emergencyContacts = repository.getEmergencyContactsList(),
                 metrics = SocietyMetrics(
                     collectedAmount = collected,
                     pendingAmount = pending,
@@ -517,6 +559,88 @@ class SocietyViewModel(
     fun deleteVisitorPass(passId: String) {
         launchMutation("Visitor pass removed") {
             repository.deleteVisitorPass(passId)
+        }
+    }
+
+    fun bookAmenity(
+        amenityId: String,
+        amenityName: String,
+        residentName: String,
+        unitLabel: String,
+        dateEpochDay: Long,
+        timeSlot: String,
+        purpose: String
+    ) {
+        viewModelScope.launch {
+            _isBusy.value = true
+            try {
+                repository.bookAmenity(
+                    amenityId = amenityId,
+                    amenityName = amenityName,
+                    residentName = residentName,
+                    unitLabel = unitLabel,
+                    dateEpochDay = dateEpochDay,
+                    timeSlot = timeSlot,
+                    purpose = purpose
+                ).onSuccess {
+                    _events.tryEmit("Amenity booked successfully for $timeSlot!")
+                }.onFailure { e ->
+                    _events.tryEmit("Booking failed: ${e.message}")
+                }
+            } finally {
+                _isBusy.value = false
+            }
+        }
+    }
+
+    fun cancelAmenityBooking(bookingId: String) {
+        launchMutation("Amenity booking cancelled") {
+            repository.cancelAmenityBooking(bookingId)
+        }
+    }
+
+    fun castPollVote(pollId: String, optionIndex: Int) {
+        launchMutation("Vote submitted! Thank you for participating.") {
+            repository.castPollVote(pollId, optionIndex)
+        }
+    }
+
+    fun createPoll(question: String, description: String, options: List<String>) {
+        launchMutation("New society poll published!") {
+            repository.createPoll(question, description, options)
+        }
+    }
+
+    fun toggleHelperStatus(helperId: String, nextInPremises: Boolean) {
+        val label = if (nextInPremises) "Checked In" else "Checked Out"
+        launchMutation("Staff status updated to $label") {
+            repository.toggleHelperPremisesStatus(helperId, nextInPremises)
+        }
+    }
+
+    fun addDomesticHelper(name: String, serviceType: String, phone: String, assignedUnits: String) {
+        viewModelScope.launch {
+            _isBusy.value = true
+            try {
+                repository.addDomesticHelper(name, serviceType, phone, assignedUnits)
+                    .onSuccess { _events.tryEmit("Added ${it.name} to society staff registry!") }
+                    .onFailure { e -> _events.tryEmit("Failed to add staff: ${e.message}") }
+            } finally {
+                _isBusy.value = false
+            }
+        }
+    }
+
+    fun addDirectoryEntry(name: String, unitNumber: String, role: String, category: String, phone: String, email: String?) {
+        viewModelScope.launch {
+            _isBusy.value = true
+            try {
+                repository.addDirectoryEntry(name, unitNumber, role, category, phone, email)
+                    .onSuccess { _events.tryEmit("Added ${it.name} to society directory!") }
+                    .onFailure { e -> _events.tryEmit("Failed to add directory entry: ${e.message}") }
+            } finally {
+                _isBusy.value = false
+            }
         }
     }
 

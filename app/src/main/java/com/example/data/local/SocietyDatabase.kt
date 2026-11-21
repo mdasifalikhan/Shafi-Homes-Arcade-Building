@@ -13,9 +13,13 @@ import androidx.room.RoomDatabase
         RepairTicketEntity::class,
         ScheduleEntryEntity::class,
         NoticeEntity::class,
-        VisitorPassEntity::class
+        VisitorPassEntity::class,
+        AmenityBookingEntity::class,
+        SocietyPollEntity::class,
+        DomesticHelperEntity::class,
+        DirectoryEntryEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class SocietyDatabase : RoomDatabase() {

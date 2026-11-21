@@ -1,11 +1,18 @@
 <resources>
     <string name="app_name">Shafi Homes Arcade</string>
     <string name="tagline_society">Building Society Operations</string>
-    <string name="nav_maintenance_requests">Maintenance Requests</string>
-    <string name="nav_payment_collection">Payment Collection</string>
-    <string name="nav_contractor_dashboard">Contractor Dashboard</string>
-    <string name="nav_notice_board">Notice Board</string>
+    <string name="nav_maintenance_requests">Repairs</string>
+    <string name="nav_payment_collection">Dues &amp; UPI</string>
+    <string name="nav_contractor_dashboard">Contractors</string>
+    <string name="nav_notice_board">Notices</string>
     <string name="nav_visitor_pass">Gate Pass</string>
+    <string name="nav_community_hub">Services</string>
+    <string name="title_community_hub">Services &amp; Community Hub</string>
+    <string name="title_amenities">Amenities &amp; Facility Booking</string>
+    <string name="title_emergency_sos">Emergency SOS &amp; Security</string>
+    <string name="title_directory">Resident &amp; Committee Directory</string>
+    <string name="title_polls">Society Polls &amp; Voting</string>
+    <string name="title_helpers">Staff &amp; Helper Tracker</string>
     <string name="action_new_notice">Post Notice</string>
     <string name="action_preapprove_visitor">Pre-Approve Guest</string>
     <string name="title_new_maintenance_request">New Maintenance Request</string>

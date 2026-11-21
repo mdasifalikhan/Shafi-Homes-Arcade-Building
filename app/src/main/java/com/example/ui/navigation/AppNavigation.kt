@@ -5,12 +5,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Campaign
-import androidx.compose.material.icons.outlined.Engineering
+import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.Build
 import androidx.compose.material.icons.rounded.Campaign
-import androidx.compose.material.icons.rounded.Engineering
+import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -33,16 +33,32 @@ import com.example.data.model.TradeCategory
 import com.example.data.model.VisitorPurpose
 import com.example.data.model.VisitorStatus
 import com.example.ui.SocietyDashboardState
+import com.example.ui.screens.AmenityBookingScreen
+import com.example.ui.screens.EmergencySosScreen
+import com.example.ui.screens.HelperStaffScreen
 import com.example.ui.screens.MaintenanceDuesScreen
 import com.example.ui.screens.NewMaintenanceRequestScreen
 import com.example.ui.screens.NoticeBoardScreen
 import com.example.ui.screens.RepairLogsScreen
 import com.example.ui.screens.ScheduleScreen
+import com.example.ui.screens.ServicesHubScreen
+import com.example.ui.screens.SocietyDirectoryScreen
+import com.example.ui.screens.SocietyPollsScreen
 import com.example.ui.screens.VisitorPassScreen
 
 object MaintenanceRequestsRoutes {
     const val LIST = "maintenance_requests/list"
     const val NEW_REQUEST = "maintenance_requests/new"
+}
+
+object CommunityRoutes {
+    const val HUB = "community_hub"
+    const val AMENITIES = "community/amenities"
+    const val EMERGENCY_SOS = "community/emergency_sos"
+    const val DIRECTORY = "community/directory"
+    const val POLLS = "community/polls"
+    const val HELPERS = "community/helpers"
+    const val CONTRACTORS = "community/contractors"
 }
 
 enum class AppDestination(
@@ -66,6 +82,13 @@ enum class AppDestination(
         unselectedIcon = Icons.Outlined.Shield,
         navTestTag = "nav_visitor_pass"
     ),
+    COMMUNITY_HUB(
+        route = CommunityRoutes.HUB,
+        labelRes = R.string.nav_community_hub,
+        selectedIcon = Icons.Rounded.GridView,
+        unselectedIcon = Icons.Outlined.GridView,
+        navTestTag = "nav_community_hub"
+    ),
     MAINTENANCE_REQUESTS(
         route = "maintenance_requests",
         labelRes = R.string.nav_maintenance_requests,
@@ -79,13 +102,6 @@ enum class AppDestination(
         selectedIcon = Icons.Rounded.AccountBalanceWallet,
         unselectedIcon = Icons.Outlined.AccountBalanceWallet,
         navTestTag = "nav_payment_collection"
-    ),
-    CONTRACTOR_DASHBOARD(
-        route = "contractor_dashboard",
-        labelRes = R.string.nav_contractor_dashboard,
-        selectedIcon = Icons.Rounded.Engineering,
-        unselectedIcon = Icons.Outlined.Engineering,
-        navTestTag = "nav_contractor_dashboard"
     );
 
     companion object {
@@ -93,10 +109,10 @@ enum class AppDestination(
             route == null -> NOTICE_BOARD
             route == NOTICE_BOARD.route -> NOTICE_BOARD
             route == VISITOR_PASS.route -> VISITOR_PASS
+            route == COMMUNITY_HUB.route || (route.startsWith("community/")) -> COMMUNITY_HUB
             route == MAINTENANCE_REQUESTS.route || route.startsWith("${MAINTENANCE_REQUESTS.route}/") ->
                 MAINTENANCE_REQUESTS
             route == PAYMENT_COLLECTION.route -> PAYMENT_COLLECTION
-            route == CONTRACTOR_DASHBOARD.route -> CONTRACTOR_DASHBOARD
             else -> NOTICE_BOARD
         }
     }
@@ -135,6 +151,21 @@ fun ShafiHomesNavHost(
     onCreateVisitorPass: (visitorName: String, phone: String?, purpose: VisitorPurpose, unitNumber: String, vehicleNumber: String?) -> Unit,
     onUpdateVisitorStatus: (passId: String, nextStatus: VisitorStatus) -> Unit,
     onDeleteVisitorPass: (String) -> Unit,
+    onBookAmenity: (
+        amenityId: String,
+        amenityName: String,
+        residentName: String,
+        unitLabel: String,
+        dateEpochDay: Long,
+        timeSlot: String,
+        purpose: String
+    ) -> Unit,
+    onCancelAmenityBooking: (bookingId: String) -> Unit,
+    onCastPollVote: (pollId: String, optionIndex: Int) -> Unit,
+    onCreatePoll: (question: String, description: String, options: List<String>) -> Unit,
+    onToggleHelperStatus: (helperId: String, nextInPremises: Boolean) -> Unit,
+    onAddDomesticHelper: (name: String, serviceType: String, phone: String, assignedUnits: String) -> Unit,
+    onAddDirectoryEntry: (name: String, unitNumber: String, role: String, category: String, phone: String, email: String?) -> Unit,
     modifier: Modifier = Modifier,
     startDestination: AppDestination = AppDestination.NOTICE_BOARD
 ) {
@@ -143,13 +174,22 @@ fun ShafiHomesNavHost(
         startDestination = startDestination.route,
         modifier = modifier
     ) {
+        // 1. Notice Board
         composable(AppDestination.NOTICE_BOARD.route) {
             NoticeBoardScreen(
                 state = state,
                 onPostNotice = onPostNotice,
-                onDeleteNotice = onDeleteNotice
+                onDeleteNotice = onDeleteNotice,
+                onNavigateToAmenities = { navController.navigate(CommunityRoutes.AMENITIES) },
+                onNavigateToEmergencySos = { navController.navigate(CommunityRoutes.EMERGENCY_SOS) },
+                onNavigateToDirectory = { navController.navigate(CommunityRoutes.DIRECTORY) },
+                onNavigateToPolls = { navController.navigate(CommunityRoutes.POLLS) },
+                onNavigateToHelpers = { navController.navigate(CommunityRoutes.HELPERS) },
+                onNavigateToHub = { navController.navigate(AppDestination.COMMUNITY_HUB.route) }
             )
         }
+
+        // 2. Visitor Pass
         composable(AppDestination.VISITOR_PASS.route) {
             VisitorPassScreen(
                 state = state,
@@ -158,6 +198,83 @@ fun ShafiHomesNavHost(
                 onDeletePass = onDeleteVisitorPass
             )
         }
+
+        // 3. Central Services Hub
+        composable(AppDestination.COMMUNITY_HUB.route) {
+            ServicesHubScreen(
+                state = state,
+                onNavigateToAmenities = { navController.navigate(CommunityRoutes.AMENITIES) },
+                onNavigateToEmergencySos = { navController.navigate(CommunityRoutes.EMERGENCY_SOS) },
+                onNavigateToDirectory = { navController.navigate(CommunityRoutes.DIRECTORY) },
+                onNavigateToPolls = { navController.navigate(CommunityRoutes.POLLS) },
+                onNavigateToHelpers = { navController.navigate(CommunityRoutes.HELPERS) },
+                onNavigateToContractors = { navController.navigate(CommunityRoutes.CONTRACTORS) },
+                onNavigateToVisitorPass = { navController.navigate(AppDestination.VISITOR_PASS.route) }
+            )
+        }
+
+        // 3a. Amenity Booking
+        composable(CommunityRoutes.AMENITIES) {
+            AmenityBookingScreen(
+                amenities = state.amenities,
+                bookings = state.amenityBookings,
+                defaultResidentName = state.profile?.residentName ?: "Resident",
+                defaultUnitLabel = state.profile?.unitLabel ?: "Tower A - 101",
+                onBookAmenity = onBookAmenity,
+                onCancelBooking = onCancelAmenityBooking
+            )
+        }
+
+        // 3b. Emergency SOS Hub
+        composable(CommunityRoutes.EMERGENCY_SOS) {
+            EmergencySosScreen(
+                contacts = state.emergencyContacts,
+                societyName = state.profile?.societyName ?: "Shafi Homes Arcade",
+                unitLabel = state.profile?.unitLabel ?: "Tower A - 101",
+                residentName = state.profile?.residentName ?: "Resident"
+            )
+        }
+
+        // 3c. Society Directory
+        composable(CommunityRoutes.DIRECTORY) {
+            SocietyDirectoryScreen(
+                directory = state.directory,
+                onAddEntry = onAddDirectoryEntry
+            )
+        }
+
+        // 3d. Society Polls
+        composable(CommunityRoutes.POLLS) {
+            SocietyPollsScreen(
+                polls = state.polls,
+                onCastVote = onCastPollVote,
+                onCreatePoll = onCreatePoll
+            )
+        }
+
+        // 3e. Domestic Staff & Helpers
+        composable(CommunityRoutes.HELPERS) {
+            HelperStaffScreen(
+                helpers = state.helpers,
+                onToggleStatus = onToggleHelperStatus,
+                onAddHelper = onAddDomesticHelper
+            )
+        }
+
+        // 3f. Contractor Dashboard & Schedule
+        composable(CommunityRoutes.CONTRACTORS) {
+            ScheduleScreen(
+                state = state,
+                onRunAutoScheduler = onAutoScheduleAll,
+                onAdvanceEntry = onAdvanceScheduleEntry,
+                onRescheduleEntry = onRescheduleEntry,
+                onOpenAddContractor = onOpenAddContractor,
+                onToggleContractorAvailable = onToggleContractorAvailable,
+                onDeleteContractor = onDeleteContractor
+            )
+        }
+
+        // 4. Maintenance Requests
         navigation(
             startDestination = MaintenanceRequestsRoutes.LIST,
             route = AppDestination.MAINTENANCE_REQUESTS.route
@@ -187,6 +304,8 @@ fun ShafiHomesNavHost(
                 )
             }
         }
+
+        // 5. Payment Collection
         composable(AppDestination.PAYMENT_COLLECTION.route) {
             MaintenanceDuesScreen(
                 state = state,
@@ -194,17 +313,6 @@ fun ShafiHomesNavHost(
                 onRecordPayment = onRecordPayment,
                 onMarkOverdue = onMarkOverdue,
                 onDeleteDue = onDeleteDue
-            )
-        }
-        composable(AppDestination.CONTRACTOR_DASHBOARD.route) {
-            ScheduleScreen(
-                state = state,
-                onRunAutoScheduler = onAutoScheduleAll,
-                onAdvanceEntry = onAdvanceScheduleEntry,
-                onRescheduleEntry = onRescheduleEntry,
-                onOpenAddContractor = onOpenAddContractor,
-                onToggleContractorAvailable = onToggleContractorAvailable,
-                onDeleteContractor = onDeleteContractor
             )
         }
     }

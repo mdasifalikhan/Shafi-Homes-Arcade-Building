@@ -49,6 +49,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.sp
 import com.example.data.model.Notice
 import com.example.data.model.NoticeCategory
 import com.example.ui.SocietyDashboardState
@@ -64,6 +67,12 @@ fun NoticeBoardScreen(
     state: SocietyDashboardState,
     onPostNotice: (title: String, content: String, category: NoticeCategory, author: String, isPinned: Boolean) -> Unit,
     onDeleteNotice: (String) -> Unit,
+    onNavigateToAmenities: () -> Unit = {},
+    onNavigateToEmergencySos: () -> Unit = {},
+    onNavigateToDirectory: () -> Unit = {},
+    onNavigateToPolls: () -> Unit = {},
+    onNavigateToHelpers: () -> Unit = {},
+    onNavigateToHub: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var selectedCategory by remember { mutableStateOf<NoticeCategory?>(null) }
@@ -98,12 +107,64 @@ fun NoticeBoardScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+            // Quick Services Shortcuts Row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                QuickActionChip(
+                    label = "🚨 Emergency SOS",
+                    containerColor = Color(0xFFFEF2F2),
+                    textColor = Color(0xFFDC2626),
+                    borderColor = Color(0xFFFCA5A5),
+                    onClick = onNavigateToEmergencySos
+                )
+                QuickActionChip(
+                    label = "🏛️ Book Amenity",
+                    containerColor = Color(0xFFEEF2FF),
+                    textColor = Color(0xFF4338CA),
+                    borderColor = Color(0xFFC7D2FE),
+                    onClick = onNavigateToAmenities
+                )
+                QuickActionChip(
+                    label = "👥 Directory",
+                    containerColor = Color(0xFFF0FDFA),
+                    textColor = Color(0xFF0F766E),
+                    borderColor = Color(0xFF99F6E4),
+                    onClick = onNavigateToDirectory
+                )
+                QuickActionChip(
+                    label = "📊 Polls & Votes",
+                    containerColor = Color(0xFFFFFBEB),
+                    textColor = Color(0xFFB45309),
+                    borderColor = Color(0xFFFDE68A),
+                    onClick = onNavigateToPolls
+                )
+                QuickActionChip(
+                    label = "🧹 Staff Tracker",
+                    containerColor = Color(0xFFECFDF5),
+                    textColor = Color(0xFF047857),
+                    borderColor = Color(0xFFA7F3D0),
+                    onClick = onNavigateToHelpers
+                )
+                QuickActionChip(
+                    label = "✨ Services Hub",
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    textColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    borderColor = MaterialTheme.colorScheme.outlineVariant,
+                    onClick = onNavigateToHub
+                )
+            }
+
             // Category Filter Chips
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 FilterChip(
@@ -397,3 +458,28 @@ private fun NewNoticeSheet(
         }
     }
 }
+
+@Composable
+private fun QuickActionChip(
+    label: String,
+    containerColor: Color,
+    textColor: Color,
+    borderColor: Color,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(12.dp),
+        color = containerColor,
+        border = BorderStroke(1.dp, borderColor)
+    ) {
+        Text(
+            text = label,
+            color = textColor,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+        )
+    }
+}
+

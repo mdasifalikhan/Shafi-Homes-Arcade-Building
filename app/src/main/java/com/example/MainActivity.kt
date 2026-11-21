@@ -17,16 +17,22 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.PrivacyTip
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -62,6 +68,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -77,6 +84,7 @@ import com.example.ui.SocietyViewModel
 import com.example.ui.UiState
 import com.example.ui.components.PrivacyPolicyDialog
 import com.example.ui.navigation.AppDestination
+import com.example.ui.navigation.CommunityRoutes
 import com.example.ui.navigation.MaintenanceRequestsRoutes
 import com.example.ui.navigation.ShafiHomesNavHost
 import com.example.ui.screens.NewMaintenanceDueSheet
@@ -115,8 +123,17 @@ private fun ShafiHomesArcadeApp() {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val navDestination = backStackEntry?.destination
-    val currentDestination = AppDestination.fromRoute(navDestination?.route)
-    val isNewRequestScreen = navDestination?.route == MaintenanceRequestsRoutes.NEW_REQUEST
+    val currentRoute = navDestination?.route
+    val currentDestination = AppDestination.fromRoute(currentRoute)
+    val isNewRequestScreen = currentRoute == MaintenanceRequestsRoutes.NEW_REQUEST
+    val isSubScreen = isNewRequestScreen || currentRoute in listOf(
+        CommunityRoutes.AMENITIES,
+        CommunityRoutes.EMERGENCY_SOS,
+        CommunityRoutes.DIRECTORY,
+        CommunityRoutes.POLLS,
+        CommunityRoutes.HELPERS,
+        CommunityRoutes.CONTRACTORS
+    )
 
     var showNewDueSheet by remember { mutableStateOf(false) }
     var showAddContractorSheet by remember { mutableStateOf(false) }
@@ -145,10 +162,15 @@ private fun ShafiHomesArcadeApp() {
 
     val context = LocalContext.current
     val loadedState = (uiState as? UiState.Success)?.data
-    val destinationLabel = if (isNewRequestScreen) {
-        stringResource(id = R.string.title_new_maintenance_request)
-    } else {
-        stringResource(id = currentDestination.labelRes)
+    val destinationLabel = when (currentRoute) {
+        MaintenanceRequestsRoutes.NEW_REQUEST -> stringResource(id = R.string.title_new_maintenance_request)
+        CommunityRoutes.AMENITIES -> stringResource(id = R.string.title_amenities)
+        CommunityRoutes.EMERGENCY_SOS -> stringResource(id = R.string.title_emergency_sos)
+        CommunityRoutes.DIRECTORY -> stringResource(id = R.string.title_directory)
+        CommunityRoutes.POLLS -> stringResource(id = R.string.title_polls)
+        CommunityRoutes.HELPERS -> stringResource(id = R.string.title_helpers)
+        CommunityRoutes.CONTRACTORS -> stringResource(id = R.string.nav_contractor_dashboard)
+        else -> stringResource(id = currentDestination.labelRes)
     }
     val societySubtitle = loadedState?.profile?.societyName ?: stringResource(id = R.string.app_name)
 
@@ -179,14 +201,14 @@ private fun ShafiHomesArcadeApp() {
                         }
                     },
                     navigationIcon = {
-                        if (isNewRequestScreen) {
+                        if (isSubScreen) {
                             IconButton(
                                 onClick = { navController.popBackStack() },
-                                modifier = Modifier.testTag("new_request_back_button")
+                                modifier = Modifier.testTag("subscreen_back_button")
                             ) {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                                    contentDescription = "Back to Maintenance Requests"
+                                    contentDescription = "Back"
                                 )
                             }
                         } else {
@@ -207,6 +229,38 @@ private fun ShafiHomesArcadeApp() {
                         }
                     },
                     actions = {
+                        Button(
+                            onClick = {
+                                navController.navigate(CommunityRoutes.EMERGENCY_SOS) {
+                                    launchSingleTop = true
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFEF4444),
+                                contentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(20.dp),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                            modifier = Modifier
+                                .height(32.dp)
+                                .padding(end = 4.dp)
+                                .testTag("top_bar_sos_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Warning,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(15.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "SOS",
+                                fontWeight = FontWeight.Black,
+                                fontSize = 12.sp,
+                                color = Color.White
+                            )
+                        }
+
                         IconButton(
                             onClick = {
                                 val sendIntent = Intent().apply {
@@ -259,14 +313,14 @@ private fun ShafiHomesArcadeApp() {
                     SocietyBottomNavigation(
                         isSelected = { destination ->
                             navDestination?.hierarchy?.any { it.route == destination.route } == true ||
-                                (navDestination == null && destination == AppDestination.MAINTENANCE_REQUESTS)
+                                (navDestination == null && destination == AppDestination.NOTICE_BOARD)
                         },
                         onSelectDestination = navigateToDestination
                     )
                 }
             },
             floatingActionButton = {
-                if (loadedState != null && !isNewRequestScreen) {
+                if (loadedState != null && !isSubScreen) {
                     when (currentDestination) {
                         AppDestination.MAINTENANCE_REQUESTS -> FloatingActionButton(
                             onClick = {
@@ -286,13 +340,14 @@ private fun ShafiHomesArcadeApp() {
                         ) {
                             Icon(Icons.Rounded.Add, contentDescription = stringResource(id = R.string.action_add_due))
                         }
-                        AppDestination.CONTRACTOR_DASHBOARD -> FloatingActionButton(
-                            onClick = { showAddContractorSheet = true },
-                            modifier = Modifier.testTag("fab_add_contractor")
-                        ) {
-                            Icon(Icons.Rounded.Add, contentDescription = stringResource(id = R.string.action_add_contractor))
-                        }
                         else -> {}
+                    }
+                } else if (loadedState != null && currentRoute == CommunityRoutes.CONTRACTORS) {
+                    FloatingActionButton(
+                        onClick = { showAddContractorSheet = true },
+                        modifier = Modifier.testTag("fab_add_contractor")
+                    ) {
+                        Icon(Icons.Rounded.Add, contentDescription = stringResource(id = R.string.action_add_contractor))
                     }
                 }
             }
@@ -419,6 +474,27 @@ private fun ShafiHomesArcadeApp() {
                                     viewModel.updateVisitorStatus(id, next)
                                 },
                                 onDeleteVisitorPass = { id -> viewModel.deleteVisitorPass(id) },
+                                onBookAmenity = { amenityId, amenityName, resName, unit, epochDay, slot, purpose ->
+                                    viewModel.bookAmenity(amenityId, amenityName, resName, unit, epochDay, slot, purpose)
+                                },
+                                onCancelAmenityBooking = { bookingId ->
+                                    viewModel.cancelAmenityBooking(bookingId)
+                                },
+                                onCastPollVote = { pollId, optIdx ->
+                                    viewModel.castPollVote(pollId, optIdx)
+                                },
+                                onCreatePoll = { question, desc, options ->
+                                    viewModel.createPoll(question, desc, options)
+                                },
+                                onToggleHelperStatus = { helperId, nextInPremises ->
+                                    viewModel.toggleHelperStatus(helperId, nextInPremises)
+                                },
+                                onAddDomesticHelper = { name, serviceType, phone, units ->
+                                    viewModel.addDomesticHelper(name, serviceType, phone, units)
+                                },
+                                onAddDirectoryEntry = { name, unit, role, category, phone, email ->
+                                    viewModel.addDirectoryEntry(name, unit, role, category, phone, email)
+                                },
                                 modifier = Modifier
                                     .widthIn(max = 780.dp)
                                     .fillMaxSize()

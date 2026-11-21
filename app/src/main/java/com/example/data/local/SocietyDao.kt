@@ -254,6 +254,61 @@ interface SocietyDao {
 
     @Query("DELETE FROM visitor_passes WHERE id = :passId")
     suspend fun deleteVisitorPass(passId: String)
+
+    // --- Amenity Bookings ---
+    @Query("SELECT * FROM amenity_bookings ORDER BY createdAtMillis DESC")
+    fun observeAmenityBookings(): Flow<List<AmenityBookingEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAmenityBooking(booking: AmenityBookingEntity)
+
+    @Query("UPDATE amenity_bookings SET status = :status WHERE id = :bookingId")
+    suspend fun updateAmenityBookingStatus(bookingId: String, status: String)
+
+    @Query("DELETE FROM amenity_bookings WHERE id = :bookingId")
+    suspend fun deleteAmenityBooking(bookingId: String)
+
+    // --- Society Polls ---
+    @Query("SELECT * FROM society_polls ORDER BY createdAtMillis DESC")
+    fun observeSocietyPolls(): Flow<List<SocietyPollEntity>>
+
+    @Query("SELECT * FROM society_polls WHERE id = :pollId LIMIT 1")
+    suspend fun getPollById(pollId: String): SocietyPollEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertSocietyPoll(poll: SocietyPollEntity)
+
+    @Query("DELETE FROM society_polls WHERE id = :pollId")
+    suspend fun deleteSocietyPoll(pollId: String)
+
+    // --- Domestic Helpers ---
+    @Query("SELECT * FROM domestic_helpers ORDER BY name ASC")
+    fun observeDomesticHelpers(): Flow<List<DomesticHelperEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertDomesticHelper(helper: DomesticHelperEntity)
+
+    @Query("UPDATE domestic_helpers SET isInPremises = :inPremises, lastCheckInTime = :checkInTime WHERE id = :helperId")
+    suspend fun updateHelperStatus(helperId: String, inPremises: Boolean, checkInTime: String?)
+
+    @Query("DELETE FROM domestic_helpers WHERE id = :helperId")
+    suspend fun deleteDomesticHelper(helperId: String)
+
+    // --- Society Directory ---
+    @Query("SELECT * FROM society_directory ORDER BY category ASC, unitNumber ASC, name ASC")
+    fun observeDirectory(): Flow<List<DirectoryEntryEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertDirectoryEntry(entry: DirectoryEntryEntity)
+
+    @Query("SELECT COUNT(*) FROM society_directory")
+    suspend fun getDirectoryCount(): Int
+
+    @Query("SELECT COUNT(*) FROM society_polls")
+    suspend fun getPollsCount(): Int
+
+    @Query("SELECT COUNT(*) FROM domestic_helpers")
+    suspend fun getHelpersCount(): Int
 }
 
 data class TicketScheduleUpdate(

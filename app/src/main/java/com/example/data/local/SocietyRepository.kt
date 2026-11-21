@@ -1,16 +1,23 @@
 package com.example.data.local
 
 import android.content.Context
+import com.example.data.model.Amenity
+import com.example.data.model.AmenityBooking
 import com.example.data.model.Contractor
+import com.example.data.model.DirectoryEntry
+import com.example.data.model.DomesticHelper
 import com.example.data.model.DueStatus
+import com.example.data.model.EmergencyContact
 import com.example.data.model.MaintenanceDue
 import com.example.data.model.Notice
 import com.example.data.model.NoticeCategory
 import com.example.data.model.PaymentMethod
+import com.example.data.model.PollOption
 import com.example.data.model.RepairTicket
 import com.example.data.model.ScheduleEntry
 import com.example.data.model.ScheduleSlot
 import com.example.data.model.ScheduleStatus
+import com.example.data.model.SocietyPoll
 import com.example.data.model.SocietyRole
 import com.example.data.model.TicketPriority
 import com.example.data.model.TicketStatus
@@ -23,6 +30,9 @@ import com.example.data.scheduling.ScheduleProposal
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.UUID
 
 class SocietyRepository(private val dao: SocietyDao) {
@@ -49,6 +59,112 @@ class SocietyRepository(private val dao: SocietyDao) {
 
     fun observeVisitorPasses(): Flow<List<VisitorPass>> =
         dao.observeVisitorPasses().map { list -> list.map { it.toDomain() } }
+
+    fun observeAmenityBookings(): Flow<List<AmenityBooking>> =
+        dao.observeAmenityBookings().map { list -> list.map { it.toDomain() } }
+
+    fun observeSocietyPolls(): Flow<List<SocietyPoll>> =
+        dao.observeSocietyPolls().map { list -> list.map { it.toDomain() } }
+
+    fun observeDomesticHelpers(): Flow<List<DomesticHelper>> =
+        dao.observeDomesticHelpers().map { list -> list.map { it.toDomain() } }
+
+    fun observeDirectory(): Flow<List<DirectoryEntry>> =
+        dao.observeDirectory().map { list -> list.map { it.toDomain() } }
+
+    fun getAmenitiesList(): List<Amenity> = listOf(
+        Amenity(
+            id = "amenity_party_hall",
+            name = "Community & Party Hall",
+            iconName = "Festival",
+            description = "Spacious air-conditioned banquet hall with sound system and kitchen prep area. Ideal for family celebrations, birthdays, and society gatherings.",
+            capacity = 100,
+            operationalHours = "09:00 AM - 11:00 PM",
+            bookingPrice = "Rs. 1,500 / event",
+            rules = "Music must be turned down after 10:00 PM. No fireworks inside."
+        ),
+        Amenity(
+            id = "amenity_rooftop",
+            name = "Rooftop Garden & BBQ Terrace",
+            iconName = "Deck",
+            description = "Scenic rooftop terrace with city skyline views, gazebos, barbecue grills, and open seating.",
+            capacity = 40,
+            operationalHours = "05:00 PM - 10:30 PM",
+            bookingPrice = "Free for Residents",
+            rules = "Clean the BBQ pit after use. Keep terrace door securely locked."
+        ),
+        Amenity(
+            id = "amenity_gym",
+            name = "Fitness Gym & Yoga Studio",
+            iconName = "FitnessCenter",
+            description = "Modern fitness center equipped with treadmills, cross-trainers, multi-gym stations, and yoga mats.",
+            capacity = 15,
+            operationalHours = "06:00 AM - 10:00 PM",
+            bookingPrice = "Free for Residents",
+            rules = "Wipe machines after use. Carry gym towel and wear sports shoes."
+        ),
+        Amenity(
+            id = "amenity_guest_parking",
+            name = "Reserved Guest Parking Bay",
+            iconName = "LocalParking",
+            description = "Dedicated basement parking bay for visiting guests, family members, and overnight parking.",
+            capacity = 6,
+            operationalHours = "24 Hours",
+            bookingPrice = "Free (Max 48 hrs)",
+            rules = "Display Gate Pass on dashboard. Park only in demarcated guest bays."
+        )
+    )
+
+    fun getEmergencyContactsList(): List<EmergencyContact> = listOf(
+        EmergencyContact(
+            id = "em_security",
+            title = "Main Gate Security Desk",
+            subtitle = "Guard Intercom & Gate Barrier Control",
+            phoneNumber = "+91 98200 11223",
+            category = "SECURITY",
+            is24x7 = true
+        ),
+        EmergencyContact(
+            id = "em_ambulance",
+            title = "Ambulance / Medical Emergency",
+            subtitle = "National Emergency Ambulance Hotline",
+            phoneNumber = "108",
+            category = "MEDICAL",
+            is24x7 = true
+        ),
+        EmergencyContact(
+            id = "em_police",
+            title = "Police Emergency Control",
+            subtitle = "Local Police Station Helpline",
+            phoneNumber = "112",
+            category = "POLICE",
+            is24x7 = true
+        ),
+        EmergencyContact(
+            id = "em_fire",
+            title = "Fire Brigade Emergency",
+            subtitle = "City Fire & Rescue Services",
+            phoneNumber = "101",
+            category = "FIRE",
+            is24x7 = true
+        ),
+        EmergencyContact(
+            id = "em_lift",
+            title = "Lift Breakdown Emergency (Otis)",
+            subtitle = "24x7 Elevator Passenger Rescue Service",
+            phoneNumber = "+91 98200 55443",
+            category = "UTILITY",
+            is24x7 = true
+        ),
+        EmergencyContact(
+            id = "em_secretary",
+            title = "Society Secretary (Mr. Tariq)",
+            subtitle = "Building Managing Committee",
+            phoneNumber = "+91 98765 43210",
+            category = "SOCIETY",
+            is24x7 = false
+        )
+    )
 
     suspend fun saveUserProfile(
         societyName: String,
@@ -485,6 +601,129 @@ class SocietyRepository(private val dao: SocietyDao) {
         dao.deleteVisitorPass(passId)
     }
 
+    suspend fun bookAmenity(
+        amenityId: String,
+        amenityName: String,
+        residentName: String,
+        unitLabel: String,
+        dateEpochDay: Long,
+        timeSlot: String,
+        purpose: String
+    ): Result<AmenityBooking> = runSafeValue {
+        val now = System.currentTimeMillis()
+        val entity = AmenityBookingEntity(
+            id = UUID.randomUUID().toString(),
+            amenityId = amenityId,
+            amenityName = amenityName,
+            residentName = residentName.trim().take(60),
+            unitLabel = unitLabel.trim().take(24),
+            dateEpochDay = dateEpochDay,
+            timeSlot = timeSlot,
+            status = "CONFIRMED",
+            purpose = purpose.trim().take(120).ifEmpty { "Resident Booking" },
+            createdAtMillis = now
+        )
+        dao.upsertAmenityBooking(entity)
+        entity.toDomain()
+    }
+
+    suspend fun cancelAmenityBooking(bookingId: String): Result<Unit> = runSafe {
+        dao.updateAmenityBookingStatus(bookingId, "CANCELLED")
+    }
+
+    suspend fun castPollVote(pollId: String, optionIndex: Int): Result<Unit> = runSafe {
+        val pollEntity = dao.getPollById(pollId) ?: return@runSafe
+        val currentDomain = pollEntity.toDomain()
+        if (currentDomain.userVotedOptionIndex != null || currentDomain.isClosed) {
+            return@runSafe
+        }
+        val updatedOptions = currentDomain.options.map { opt ->
+            if (opt.index == optionIndex) {
+                opt.copy(votesCount = opt.votesCount + 1)
+            } else {
+                opt
+            }
+        }
+        val updatedRaw = SocietyPollEntity.formatOptions(updatedOptions)
+        val updatedEntity = pollEntity.copy(
+            optionsRaw = updatedRaw,
+            totalVotes = pollEntity.totalVotes + 1,
+            userVotedOptionIndex = optionIndex
+        )
+        dao.upsertSocietyPoll(updatedEntity)
+    }
+
+    suspend fun createPoll(
+        question: String,
+        description: String,
+        options: List<String>
+    ): Result<Unit> = runSafe {
+        val now = System.currentTimeMillis()
+        val pollOptions = options.filter { it.isNotBlank() }.mapIndexed { index, text ->
+            PollOption(index = index, text = text.trim(), votesCount = 0)
+        }
+        val raw = SocietyPollEntity.formatOptions(pollOptions)
+        dao.upsertSocietyPoll(
+            SocietyPollEntity(
+                id = UUID.randomUUID().toString(),
+                question = question.trim().take(150),
+                description = description.trim().take(300),
+                optionsRaw = raw,
+                totalVotes = 0,
+                userVotedOptionIndex = null,
+                createdAtMillis = now,
+                isClosed = false
+            )
+        )
+    }
+
+    suspend fun toggleHelperPremisesStatus(helperId: String, isInPremises: Boolean): Result<Unit> = runSafe {
+        val checkIn = if (isInPremises) {
+            SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date())
+        } else null
+        dao.updateHelperStatus(helperId, isInPremises, checkIn)
+    }
+
+    suspend fun addDomesticHelper(
+        name: String,
+        serviceType: String,
+        phone: String,
+        assignedUnits: String
+    ): Result<DomesticHelper> = runSafeValue {
+        val entity = DomesticHelperEntity(
+            id = UUID.randomUUID().toString(),
+            name = name.trim().take(60),
+            serviceType = serviceType,
+            phone = phone.trim().take(20),
+            assignedUnits = assignedUnits.trim().take(60),
+            isInPremises = false,
+            lastCheckInTime = null
+        )
+        dao.upsertDomesticHelper(entity)
+        entity.toDomain()
+    }
+
+    suspend fun addDirectoryEntry(
+        name: String,
+        unitNumber: String,
+        role: String,
+        category: String,
+        phone: String,
+        email: String?
+    ): Result<DirectoryEntry> = runSafeValue {
+        val entity = DirectoryEntryEntity(
+            id = UUID.randomUUID().toString(),
+            name = name.trim().take(60),
+            unitNumber = unitNumber.trim().take(24),
+            role = role.trim().take(40),
+            category = category,
+            phoneNumber = phone.trim().take(20),
+            email = email?.trim()?.take(60)
+        )
+        dao.upsertDirectoryEntry(entity)
+        entity.toDomain()
+    }
+
     suspend fun seedDefaultsIfEmpty(): Result<Unit> = runSafe {
         val profile = dao.getProfileOnce()
         if (profile == null) {
@@ -527,6 +766,66 @@ class SocietyRepository(private val dao: SocietyDao) {
                     createdAtMillis = now - 3600_000L * 2
                 )
             )
+        }
+
+        val directoryCount = dao.getDirectoryCount()
+        if (directoryCount == 0) {
+            val directory = listOf(
+                DirectoryEntryEntity(UUID.randomUUID().toString(), "Syed Mohammad Asif", "Tower A - 302", "President", "COMMITTEE", "+91 98200 44332", "asifalikhan@programmer.net"),
+                DirectoryEntryEntity(UUID.randomUUID().toString(), "Tariq Mahmood", "Tower A - 401", "Secretary", "COMMITTEE", "+91 98765 43210", "secretary@shafihomes.com"),
+                DirectoryEntryEntity(UUID.randomUUID().toString(), "Farhan Qureshi", "Tower B - 204", "Treasurer", "COMMITTEE", "+91 98111 22334", "treasurer@shafihomes.com"),
+                DirectoryEntryEntity(UUID.randomUUID().toString(), "Abdul Basit", "Security Gate", "Head Security Guard", "STAFF", "+91 98200 11223", null),
+                DirectoryEntryEntity(UUID.randomUUID().toString(), "Suresh Sharma", "Utility Desk", "Society Electrician", "STAFF", "+91 98333 44556", null),
+                DirectoryEntryEntity(UUID.randomUUID().toString(), "Ramesh Kumar", "Utility Desk", "Society Plumber", "STAFF", "+91 98444 55667", null),
+                DirectoryEntryEntity(UUID.randomUUID().toString(), "Zubair Ahmed", "Tower A - 101", "Resident", "RESIDENT", "+91 98555 66778", null),
+                DirectoryEntryEntity(UUID.randomUUID().toString(), "Imran Khan", "Tower A - 102", "Resident", "RESIDENT", "+91 98666 77889", null),
+                DirectoryEntryEntity(UUID.randomUUID().toString(), "Dr. Rashid Ali", "Tower B - 301", "Resident", "RESIDENT", "+91 98777 88990", null)
+            )
+            for (entry in directory) {
+                dao.upsertDirectoryEntry(entry)
+            }
+        }
+
+        val pollsCount = dao.getPollsCount()
+        if (pollsCount == 0) {
+            val now = System.currentTimeMillis()
+            dao.upsertSocietyPoll(
+                SocietyPollEntity(
+                    id = UUID.randomUUID().toString(),
+                    question = "Should we install a 15kW Rooftop Solar System?",
+                    description = "Estimated to cut society common area lighting and lift electricity costs by 65%. Subsidy applicable under PM Surya Ghar Yojana.",
+                    optionsRaw = "Yes, approve immediately:::14|||Need more vendor quotes:::4|||No, postpone for now:::1",
+                    totalVotes = 19,
+                    userVotedOptionIndex = null,
+                    createdAtMillis = now - 86400_000L * 2,
+                    isClosed = false
+                )
+            )
+            dao.upsertSocietyPoll(
+                SocietyPollEntity(
+                    id = UUID.randomUUID().toString(),
+                    question = "Proposed Exterior Building Painting Color Theme",
+                    description = "Society facade repainting is planned for next quarter. Choose your preferred weather-proof exterior color combination.",
+                    optionsRaw = "Royal Cream & Sandstone Yellow:::11|||Slate Grey & Charcoal Accent:::9|||Warm Terracotta & Off-White:::5",
+                    totalVotes = 25,
+                    userVotedOptionIndex = null,
+                    createdAtMillis = now - 86400_000L * 5,
+                    isClosed = false
+                )
+            )
+        }
+
+        val helpersCount = dao.getHelpersCount()
+        if (helpersCount == 0) {
+            val helpers = listOf(
+                DomesticHelperEntity(UUID.randomUUID().toString(), "Sunita Bai", "MAID", "+91 98991 11223", "Tower A: 101, 202, 302", true, "08:15 AM"),
+                DomesticHelperEntity(UUID.randomUUID().toString(), "Ramesh Verma", "DRIVER", "+91 98992 22334", "Tower B: 204", true, "08:45 AM"),
+                DomesticHelperEntity(UUID.randomUUID().toString(), "Anita Devi", "COOK", "+91 98993 33445", "Tower A: 401, 402", false, null),
+                DomesticHelperEntity(UUID.randomUUID().toString(), "Imran Ali", "CAR_CLEANER", "+91 98994 44556", "Basement Parking: Slots 1-18", true, "06:30 AM")
+            )
+            for (h in helpers) {
+                dao.upsertDomesticHelper(h)
+            }
         }
     }
 
